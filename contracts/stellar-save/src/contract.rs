@@ -3956,7 +3956,7 @@ impl StellarSaveContract {
         let withdrawal_amount = if has_received { 0 } else { total_contributed };
 
         if withdrawal_amount > 0 {
-            // Load token config and execute the actual transfer
+            // Load token config
             let token_config_key = StorageKeyBuilder::group_token_config(group_id);
             let token_config: crate::group::TokenConfig = env
                 .storage()
@@ -3964,11 +3964,8 @@ impl StellarSaveContract {
                 .get(&token_config_key)
                 .ok_or(StellarSaveError::GroupNotFound)?;
 
-            let token_client =
-                soroban_sdk::token::TokenClient::new(&env, &token_config.token_address);
-            token_client.transfer(&env.current_contract_address(), &member, &withdrawal_amount);
-
-            // Update the group balance counter
+            // ── Effects ───────────────────────────────────────────────────────
+            // Checks-effects-interactions: update state before external transfer
             let balance_key = StorageKeyBuilder::group_balance(group_id);
             let current_balance: i128 = env.storage().persistent().get(&balance_key).unwrap_or(0);
             let new_balance = current_balance
@@ -3976,15 +3973,24 @@ impl StellarSaveContract {
                 .ok_or(StellarSaveError::Overflow)?;
             env.storage().persistent().set(&balance_key, &new_balance);
 
+            // Remove member profile before transfer so reentrant calls fail NotMember
+            let withdrawal_key = StorageKeyBuilder::member_profile(group_id, member.clone());
+            env.storage().persistent().remove(&withdrawal_key);
+
+            // ── Interaction ───────────────────────────────────────────────────
+            let token_client =
+                soroban_sdk::token::TokenClient::new(&env, &token_config.token_address);
+            token_client.transfer(&env.current_contract_address(), &member, &withdrawal_amount);
+
             env.events().publish(
                 (Symbol::new(&env, "emergency_withdrawal"),),
                 (group_id, member.clone(), withdrawal_amount),
             );
+        } else {
+            // Member profile removed even if no funds to withdraw (already received payout)
+            let withdrawal_key = StorageKeyBuilder::member_profile(group_id, member.clone());
+            env.storage().persistent().remove(&withdrawal_key);
         }
-
-        // Remove member profile after transfer succeeds (checks-effects-interactions)
-        let withdrawal_key = StorageKeyBuilder::member_profile(group_id, member.clone());
-        env.storage().persistent().remove(&withdrawal_key);
 
         Ok(())
     }
