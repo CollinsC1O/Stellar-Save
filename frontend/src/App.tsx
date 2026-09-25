@@ -2,6 +2,7 @@ import { Box } from '@mui/material';
 import { lazy, Suspense } from 'react';
 
 import './App.css';
+import { FeedbackWidget } from './components/FeedbackWidget';
 import { CardSkeleton } from './components/Skeleton';
 import { useDeepLink } from './hooks/useDeepLink';
 
