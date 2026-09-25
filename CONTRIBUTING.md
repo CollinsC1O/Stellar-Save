@@ -275,6 +275,31 @@ git commit --allow-empty -m "chore: test commitlint hook"
 | `ci`       | CI/CD configuration changes                 |
 | `revert`   | Reverting a previous commit                 |
 
+### Allowed scopes
+
+Scopes are optional, but when present they must match a package or area of this monorepo.
+The list is enforced by the `scope-enum` rule in [`commitlint.config.js`](commitlint.config.js)
+and is kept in sync with the packages declared in [`pnpm-workspace.yaml`](pnpm-workspace.yaml).
+
+| Scope           | Area                                                         |
+| --------------- | ------------------------------------------------------------ |
+| `frontend`      | React SPA (`frontend/`)                                      |
+| `backend`       | GraphQL / NestJS API (`backend/`)                            |
+| `mobile`        | Expo React Native app (`mobile/`)                            |
+| `sdk`           | Shared TypeScript SDK (`packages/sdk`)                       |
+| `shared-utils`  | Shared utility functions (`packages/shared-utils`)           |
+| `events-schema` | Contract event schema and codegen (`packages/events-schema`) |
+| `contracts`     | Soroban smart contracts (`contracts/`)                       |
+| `database`      | Migration tooling and tests (`database/`)                    |
+| `docs`          | Documentation and guides                                     |
+| `ci`            | GitHub Actions and pipelines                                 |
+| `deps`          | Dependency bumps and lockfile updates                        |
+| `release`       | Versioning and changelog                                     |
+
+Omit the scope entirely for changes that span the whole repository, for example
+`chore: update prettier config`. When the workspace layout changes, update `scopes` in
+`commitlint.config.js` and this table in the same PR.
+
 ### Rules
 
 - Use imperative mood: "add" not "added" or "adds"
@@ -285,7 +310,7 @@ git commit --allow-empty -m "chore: test commitlint hook"
 ### Examples
 
 ```
-feat(contract): add penalty mechanism for missed contributions
+feat(contracts): add penalty mechanism for missed contributions
 
 fix(frontend): correct off-by-one in payout position display
 
@@ -297,7 +322,7 @@ chore: update soroban-sdk to 23.0.3
 
 refactor(mobile): migrate inline stroop formatting to shared SDK utils
 
-style(css): remove unused Vite default classes from App.css
+style(frontend): remove unused Vite default classes from App.css
 ```
 
 ### Common rejection messages
@@ -308,6 +333,7 @@ style(css): remove unused Vite default classes from App.css
 | `type must be one of [feat, fix, ...]`          | Use an allowed type listed above  |
 | `subject must not be sentence-case`             | Start description with lowercase  |
 | `header must not be longer than 100 characters` | Shorten the subject line          |
+| `scope must be one of [frontend, ...]`          | Use an allowed scope listed above |
 
 ---
 
