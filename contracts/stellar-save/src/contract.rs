@@ -15,7 +15,7 @@ use crate::refund::RefundRecord;
 use crate::search::{SearchParams, SearchResult};
 use crate::storage::{StorageKey, StorageKeyBuilder};
 use crate::types::{AssignmentMode, ContractConfig, MemberProfile, PayoutScheduleEntry};
-use crate::{governance, migration, milestones, payout_executor, penalty, rating, refund, search};
+use crate::{auth, governance, migration, milestones, payout_executor, penalty, rating, refund, search};
 use core::cmp;
 use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, Map, String, Symbol, Vec};
 
@@ -290,20 +290,8 @@ impl StellarSaveContract {
     /// * `Ok(())` - If migration completed successfully or no migration needed
     /// * `Err(StellarSaveError)` - If migration failed or caller is not admin
     pub fn migrate_storage(env: Env, caller: Address) -> Result<(), StellarSaveError> {
-        // Require admin authorization
-        let config_key = StorageKeyBuilder::contract_config();
-        if let Some(config) = env
-            .storage()
-            .persistent()
-            .get::<_, ContractConfig>(&config_key)
-        {
-            if config.admin != caller {
-                return Err(StellarSaveError::Unauthorized);
-            }
-            caller.require_auth();
-        } else {
-            return Err(StellarSaveError::InvalidState); // No config means contract not initialized
-        }
+        // Require admin authorization via shared helper
+        auth::require_admin(&env, &caller)?;
 
         // Perform migration
         migrate(&env)?;
@@ -348,18 +336,7 @@ impl StellarSaveContract {
         new_wasm: BytesN<32>,
         new_version: u32,
     ) -> Result<(), StellarSaveError> {
-        caller.require_auth();
-
-        // Verify admin
-        let config_key = StorageKeyBuilder::contract_config();
-        let config = env
-            .storage()
-            .persistent()
-            .get::<_, ContractConfig>(&config_key)
-            .ok_or(StellarSaveError::Unauthorized)?;
-        if config.admin != caller {
-            return Err(StellarSaveError::Unauthorized);
-        }
+        auth::require_admin(&env, &caller)?;
 
         migration::execute_upgrade(&env, caller, new_wasm, new_version)
     }
@@ -385,7 +362,7 @@ impl StellarSaveContract {
         min_contribution: i128,
         max_contribution: i128,
     ) -> Result<(), StellarSaveError> {
-        admin.require_auth();
+        auth::require_admin(&env, &admin)?;
 
         if min_contribution <= 0 {
             return Err(StellarSaveError::ContributionTooLow);
@@ -400,10 +377,6 @@ impl StellarSaveContract {
             .persistent()
             .get::<_, ContractConfig>(&key)
             .ok_or(StellarSaveError::Unauthorized)?;
-
-        if config.admin != admin {
-            return Err(StellarSaveError::Unauthorized);
-        }
 
         config.min_contribution = min_contribution;
         config.max_contribution = max_contribution;
@@ -656,16 +629,7 @@ impl StellarSaveContract {
         admin: Address,
         token_address: Address,
     ) -> Result<(), StellarSaveError> {
-        admin.require_auth();
-        let config_key = StorageKeyBuilder::contract_config();
-        let config = env
-            .storage()
-            .persistent()
-            .get::<_, ContractConfig>(&config_key)
-            .ok_or(StellarSaveError::Unauthorized)?;
-        if config.admin != admin {
-            return Err(StellarSaveError::Unauthorized);
-        }
+        auth::require_admin(&env, &admin)?;
         let list_key = StorageKeyBuilder::allowed_tokens();
         let mut list: Vec<Address> = env
             .storage()
@@ -685,16 +649,7 @@ impl StellarSaveContract {
         admin: Address,
         token_address: Address,
     ) -> Result<(), StellarSaveError> {
-        admin.require_auth();
-        let config_key = StorageKeyBuilder::contract_config();
-        let config = env
-            .storage()
-            .persistent()
-            .get::<_, ContractConfig>(&config_key)
-            .ok_or(StellarSaveError::Unauthorized)?;
-        if config.admin != admin {
-            return Err(StellarSaveError::Unauthorized);
-        }
+        auth::require_admin(&env, &admin)?;
         let list_key = StorageKeyBuilder::allowed_tokens();
         let list: Vec<Address> = env
             .storage()
@@ -1841,14 +1796,10 @@ impl StellarSaveContract {
     /// - `Unauthorized` - Caller is not the group creator
     /// - `InvalidState` - Group not in Active status
     pub fn pause_group(env: Env, group_id: u64, caller: Address) -> Result<(), StellarSaveError> {
-        caller.require_auth();
         use crate::repository::GroupRepository;
 
         let mut group = GroupRepository::get_group(&env, group_id)?;
-
-        if group.creator != caller {
-            return Err(StellarSaveError::Unauthorized);
-        }
+        auth::require_creator(&caller, &group)?;
 
         let status_key = StorageKeyBuilder::group_status(group_id);
         let current_status: GroupStatus = env
@@ -1891,14 +1842,10 @@ impl StellarSaveContract {
     /// - `Unauthorized` - Caller is not the group creator
     /// - `InvalidState` - Group not in Paused status
     pub fn resume_group(env: Env, group_id: u64, caller: Address) -> Result<(), StellarSaveError> {
-        caller.require_auth();
         use crate::repository::GroupRepository;
 
         let mut group = GroupRepository::get_group(&env, group_id)?;
-
-        if group.creator != caller {
-            return Err(StellarSaveError::Unauthorized);
-        }
+        auth::require_creator(&caller, &group)?;
 
         let status_key = StorageKeyBuilder::group_status(group_id);
         let current_status: GroupStatus = env
@@ -2109,8 +2056,6 @@ impl StellarSaveContract {
     /// - `Unauthorized` - Caller is not the group creator
     /// - `InvalidState` - Group is already in terminal state
     pub fn cancel_group(env: Env, group_id: u64, caller: Address) -> Result<(), StellarSaveError> {
-        caller.require_auth();
-
         let group_key = StorageKeyBuilder::group_data(group_id);
         let group = env
             .storage()
@@ -2118,9 +2063,7 @@ impl StellarSaveContract {
             .get::<_, Group>(&group_key)
             .ok_or(StellarSaveError::GroupNotFound)?;
 
-        if group.creator != caller {
-            return Err(StellarSaveError::Unauthorized);
-        }
+        auth::require_creator(&caller, &group)?;
 
         let status_key = StorageKeyBuilder::group_status(group_id);
         let current_status: GroupStatus = env
@@ -5376,8 +5319,6 @@ impl StellarSaveContract {
         caller: Address,
         config: penalty::PenaltyConfig,
     ) -> Result<(), StellarSaveError> {
-        caller.require_auth();
-
         let group_key = StorageKeyBuilder::group_data(group_id);
         let group = env
             .storage()
@@ -5385,9 +5326,7 @@ impl StellarSaveContract {
             .get::<_, Group>(&group_key)
             .ok_or(StellarSaveError::GroupNotFound)?;
 
-        if group.creator != caller {
-            return Err(StellarSaveError::Unauthorized);
-        }
+        auth::require_creator(&caller, &group)?;
 
         penalty::set_penalty_config(&env, group_id, config);
         Ok(())
