@@ -1,5 +1,5 @@
 declare module 'jest-axe' {
-  import { ReactElement } from 'react';
+  import type { ReactElement } from 'react';
 
   interface AxeNode {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,7 +29,10 @@ declare module 'jest-axe' {
   export function axe(element: Element | ReactElement): Promise<AxeResults>;
 
   export const toHaveNoViolations: {
-    toHaveNoViolations(this: { currentTestName?: string }, results: AxeResults): { pass: boolean; message(): string };
+    toHaveNoViolations(
+      this: { currentTestName?: string },
+      results: AxeResults
+    ): { pass: boolean; message(): string };
   };
 }
 

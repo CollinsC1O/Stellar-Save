@@ -4,16 +4,13 @@
 //! reaches a terminal state (Completed or Cancelled).
 //!
 //! ## Storage layout
-//! - `GroupKey::Rating(group_id, member)` → `RatingEntry`  (per-member rating)
-//! - `GroupKey::RatingAggregate(group_id)` → `RatingAggregate` (running totals)
+//! - `StorageKey::GrpRate(group_id, member)` → `RatingEntry`  (per-member rating)
+//! - `StorageKey::GrpRateA(group_id)` → `RatingAggregate` (running totals)
 
 use soroban_sdk::{contracttype, Address, Env, String};
 
 use crate::{
-    auth::is_active_member,
-    error::StellarSaveError,
-    events::EventEmitter,
-    group::Group,
+    auth::is_active_member, error::StellarSaveError, events::EventEmitter, group::Group,
     storage::StorageKeyBuilder,
 };
 

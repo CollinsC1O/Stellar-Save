@@ -6,6 +6,7 @@
  * - Exposes `mode` and `toggleTheme` to the whole app
  * - Wraps MUI ThemeProvider with the correct theme object
  */
+import { ThemeProvider, CssBaseline } from '@mui/material';
 import {
   createContext,
   useCallback,
@@ -15,7 +16,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+
 import { lightTheme, darkTheme } from '../ui/theme/theme';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -61,10 +62,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
 
   const theme = useMemo(() => (mode === 'dark' ? darkTheme : lightTheme), [mode]);
 
-  const value = useMemo<ThemeContextValue>(
-    () => ({ mode, toggleTheme }),
-    [mode, toggleTheme],
-  );
+  const value = useMemo<ThemeContextValue>(() => ({ mode, toggleTheme }), [mode, toggleTheme]);
 
   return (
     <ThemeContext.Provider value={value}>

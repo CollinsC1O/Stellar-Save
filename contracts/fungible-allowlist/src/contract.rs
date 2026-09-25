@@ -16,23 +16,7 @@ use stellar_tokens::fungible::{
     Base, FungibleToken,
 };
 
-/// Reusable helper guard that requires caller authentication and verifies
-/// that the caller is the contract admin or has the manager role.
-pub fn require_admin(e: &Env, operator: &Address) {
-    operator.require_auth();
-    if let Some(admin) = access_control::get_admin(e) {
-        if &admin != operator && !access_control::has_role(e, operator, &symbol_short!("manager")) {
-            panic!("unauthorized caller: required admin or manager role");
-        }
-    }
-}
-
-/// Reusable helper guard that checks whether an account is allowlisted.
-pub fn require_allowlisted(e: &Env, account: &Address) {
-    if !AllowList::allowed(e, account) {
-        panic!("unauthorized: account is not allowlisted");
-    }
-}
+use crate::policy::{require_admin, require_allowlisted};
 
 #[contract]
 pub struct ExampleContract;

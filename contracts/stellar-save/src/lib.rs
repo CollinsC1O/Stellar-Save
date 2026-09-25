@@ -13,8 +13,8 @@ pub mod admin_actions_tests;
 pub mod auth;
 pub mod clone;
 pub mod constants;
-pub mod contribution;
 pub mod contract;
+pub mod contribution;
 pub mod cycle_advancement;
 pub mod deadline;
 pub mod error;
@@ -41,6 +41,7 @@ pub mod token;
 pub mod types;
 
 // mod auto_contribution_tests;
+pub mod cei_tests;
 pub mod gas_benchmark;
 pub mod insurance_integration_tests;
 pub mod test_utils;
@@ -68,4 +69,3 @@ pub use group::{Group, GroupStatus};
 pub use payout::PayoutRecord;
 pub use storage::StorageKeyBuilder;
 pub use types::{ContractConfig, MemberProfile};
-
