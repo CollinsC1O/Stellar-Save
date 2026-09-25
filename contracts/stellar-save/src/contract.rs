@@ -162,6 +162,33 @@ impl StellarSaveContract {
             return Err(StellarSaveError::AlreadyContributed);
         }
 
+        Self::record_contribution_unchecked(
+            env,
+            group_id,
+            cycle_number,
+            member_address,
+            amount,
+            timestamp,
+        )
+    }
+
+    /// Gas opt: records contribution without repeating the `has(&contrib_key)` SLOAD.
+    /// Callers such as `contribute_batch` and `execute_auto_contributions` that have
+    /// already validated contribution status can bypass the redundant storage read.
+    fn record_contribution_unchecked(
+        env: &Env,
+        group_id: u64,
+        cycle_number: u32,
+        member_address: Address,
+        amount: i128,
+        timestamp: u64,
+    ) -> Result<i128, StellarSaveError> {
+        let contrib_key = StorageKeyBuilder::contribution_individual(
+            group_id,
+            cycle_number,
+            member_address.clone(),
+        );
+
         // 2. Create and store contribution record (1 SSTORE)
         let contribution = ContributionRecord::new(
             member_address.clone(),
@@ -1703,7 +1730,11 @@ impl StellarSaveContract {
         let mut defaulted = false;
 
         // 5. Check if cycle is complete (all contributions received)
-        let cycle_complete = Self::is_cycle_complete(env.clone(), group_id, group.current_cycle)?;
+        // Gas opt: check against already-loaded group.member_count to avoid
+        // re-loading group storage or deserializing the entire group_members map.
+        let count_key = StorageKeyBuilder::contribution_cycle_count(group_id, group.current_cycle);
+        let contributed_count: u32 = env.storage().persistent().get(&count_key).unwrap_or(0);
+        let cycle_complete = contributed_count >= group.member_count;
 
         if cycle_complete {
             // 5a. Execute payout if cycle is complete
@@ -3260,17 +3291,17 @@ impl StellarSaveContract {
         group_id: u64,
         cycle_number: u32,
     ) -> Result<bool, StellarSaveError> {
-        let members_key = StorageKeyBuilder::group_members(group_id);
-        let members: Map<u32, Address> = env
+        let group_key = StorageKeyBuilder::group_data(group_id);
+        let group: Group = env
             .storage()
             .persistent()
-            .get(&members_key)
+            .get(&group_key)
             .ok_or(StellarSaveError::GroupNotFound)?;
 
         let count_key = StorageKeyBuilder::contribution_cycle_count(group_id, cycle_number);
         let contributed_count: u32 = env.storage().persistent().get(&count_key).unwrap_or(0);
 
-        Ok(contributed_count >= members.len())
+        Ok(contributed_count >= group.member_count)
     }
 
     /// Identifies members who haven't contributed in the specified cycle.
@@ -4585,10 +4616,12 @@ impl StellarSaveContract {
         // malicious implementation can call back during `transfer_from`; with the
         // contribution keys already written, the `has(&contrib_key)` validation
         // above rejects a reentrant batch with AlreadyContributed.
+        // Gas opt: record_contribution_unchecked bypasses repeating the has() SLOAD
+        // for each cycle because it was already validated above.
         let mut cycle_totals: Vec<i128> = Vec::new(&env);
         for i in 0..cycles.len() {
             let cycle = cycles.get(i).unwrap();
-            cycle_totals.push_back(Self::record_contribution(
+            cycle_totals.push_back(Self::record_contribution_unchecked(
                 &env,
                 group_id,
                 cycle,
@@ -4885,7 +4918,9 @@ impl StellarSaveContract {
             // Checks-effects-interactions: writing the contribution key first
             // means a token that calls back during `transfer_from` hits the
             // "already contributed" skip at 4b instead of being charged twice.
-            let cycle_total = Self::record_contribution(
+            // Gas opt: record_contribution_unchecked avoids repeating the has() SLOAD
+            // already checked in step 4b.
+            let cycle_total = Self::record_contribution_unchecked(
                 &env,
                 group_id,
                 current_cycle,
