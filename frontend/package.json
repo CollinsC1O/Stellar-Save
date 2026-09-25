@@ -33,7 +33,9 @@
     "test:visual:components": "npm run build:visual && playwright test --config=playwright.component-visual.config.ts",
     "test:visual:components:update": "npm run build:visual && playwright test --config=playwright.component-visual.config.ts --update-snapshots",
     "codegen": "graphql-codegen --config codegen.ts",
-    "codegen:watch": "graphql-codegen --config codegen.ts --watch"
+    "codegen:watch": "graphql-codegen --config codegen.ts --watch",
+    "audit:i18n": "node scripts/audit-i18n-keys.mjs",
+    "audit:i18n:json": "node scripts/audit-i18n-keys.mjs --json"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",
