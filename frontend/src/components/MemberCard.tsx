@@ -1,14 +1,7 @@
 import React, { useState } from "react"
 import { copyToClipboard } from "../lib/clipboard"
+import { formatShortAddress as formatAddress, formatShortDate as formatDate } from "../lib/formatters"
 import { MemberCardData, MemberStatus } from "../types/contribution"
-
-function formatAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`
-}
-
-function formatDate(date: Date): string {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-}
 
 function getInitials(name?: string, address?: string): string {
   if (name) return name.slice(0, 2).toUpperCase()

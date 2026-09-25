@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+import { formatShortAddress as formatAddress } from '../lib/formatters';
+
 import type { ContributionCycle, Member } from '../types/contribution';
 
 interface ContributionStatusProps {
@@ -7,10 +9,6 @@ interface ContributionStatusProps {
   currentUserAddress?: string;
   onRefresh?: () => void;
   refreshInterval?: number; // ms
-}
-
-function formatAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 function formatTimeLeft(deadline: Date): string {
