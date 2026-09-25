@@ -6,9 +6,11 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { Skeleton } from '../Skeleton/Skeleton';
-import { EmptyState } from '../EmptyState/EmptyState';
+
 import { useActivityFeed } from '../../hooks/useActivityFeed';
+import { EmptyState } from '../EmptyState/EmptyState';
+import { Skeleton } from '../Skeleton/Skeleton';
+
 import type { ActivityItem, ActivityFeedFilter } from '../../hooks/useActivityFeed';
 import type { AppEvent, EventType } from '../../types/events';
 import './ActivityFeed.css';
@@ -62,7 +64,14 @@ const IconRefresh = () => (
 );
 
 const IconFilter = ({ className }: { className?: string }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+    className={className}
+  >
     <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
   </svg>
 );
@@ -189,9 +198,7 @@ function ActivityRow({ item }: ActivityRowProps) {
       </div>
       <div className="activity-item__body">
         <span className="activity-item__title">{config.title}</span>
-        {config.subtitle && (
-          <span className="activity-item__subtitle">{config.subtitle}</span>
-        )}
+        {config.subtitle && <span className="activity-item__subtitle">{config.subtitle}</span>}
       </div>
       <time
         className="activity-item__time"
@@ -242,7 +249,7 @@ export function ActivityFeed({
           loadMore();
         }
       },
-      { threshold: 0.1 },
+      { threshold: 0.1 }
     );
 
     observer.observe(sentinel);
@@ -258,13 +265,11 @@ export function ActivityFeed({
       };
       setFilter(newFilter);
     },
-    [groupId, setFilter],
+    [groupId, setFilter]
   );
 
   const activeType: EventType | 'all' =
-    activeFilter.types && activeFilter.types.length === 1
-      ? activeFilter.types[0]!
-      : 'all';
+    activeFilter.types && activeFilter.types.length === 1 ? activeFilter.types[0]! : 'all';
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -315,11 +320,7 @@ export function ActivityFeed({
       {error && (
         <div className="activity-feed__error" role="alert">
           {error}
-          <button
-            type="button"
-            className="activity-feed__error-retry"
-            onClick={refresh}
-          >
+          <button type="button" className="activity-feed__error-retry" onClick={refresh}>
             Retry
           </button>
         </div>

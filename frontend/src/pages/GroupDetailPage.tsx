@@ -288,7 +288,7 @@ function GroupDetailContent() {
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [managedMember, setManagedMember] = useState<GroupMember | null>(null);
+  const [managedMember] = useState<GroupMember | null>(null);
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
 
   const isMember = group?.members.some((m) => m.address === activeAddress);

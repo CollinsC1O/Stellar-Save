@@ -1,14 +1,20 @@
-import { Router, Request, Response } from 'express';
-import { V1Services } from './v1';
+
+
 import { randomBytes } from 'crypto';
 
-import { notificationService } from '../notification_service';
-import { prisma } from '../prisma_client';
-import { logger } from '../logger';
+import { Router } from 'express';
+
 import { config } from '../config';
-import { readinessCheckCache } from '../redis';
+import { AppError } from '../lib/errors';
+import { logger } from '../logger';
 import { ValidationMiddleware } from '../middleware/validation';
 import { groupInvitationSchema } from '../middleware/validation.schemas';
+import { notificationService } from '../notification_service';
+import { prisma } from '../prisma_client';
+import { readinessCheckCache } from '../redis';
+
+import type { V1Services } from './v1';
+import type { Request, Response, NextFunction } from 'express';
 
 /**
  * Transforms a v1 response shape into v2 shape.
@@ -70,57 +76,58 @@ export function createV2Router(services: V1Services): Router {
   router.post(
     '/groups/:groupId/invite',
     ValidationMiddleware.validateBody(groupInvitationSchema),
-    async (req: Request, res: Response) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       try {
         const { groupId, email } = req.body;
 
-      // Generate token for join link
-      const joinToken = randomBytes(32).toString('hex');
+        // Generate token for join link
+        const joinToken = randomBytes(32).toString('hex');
 
-      // Persist invitation in DB
-      const invitation = await (prisma as any).groupInvitation.create({
-        data: {
-          groupId,
-          recipientEmail: email,
-          joinToken,
-          status: 'sent',
-        },
-      });
+        // Persist invitation in DB
+        const invitation = await (prisma as any).groupInvitation.create({
+          data: {
+            groupId,
+            recipientEmail: email,
+            joinToken,
+            status: 'sent',
+          },
+        });
 
-      const frontendUrl = config.urls.frontend;
-      const joinLink = `${frontendUrl}/groups/join?token=${joinToken}`;
+        const frontendUrl = config.urls.frontend;
+        const joinLink = `${frontendUrl}/groups/join?token=${joinToken}`;
 
-      const groupName = `Group ${groupId}`; // TODO: fetch actual group name if available
-      const creatorUserId = 'unknown'; // TODO: extract from auth context
+        const groupName = `Group ${groupId}`; // TODO: fetch actual group name if available
+        const creatorUserId = 'unknown'; // TODO: extract from auth context
 
-      // Ensure a template exists in the system; use a dedicated template key.
-      const templateKey = 'email_group_invitation';
-      const subject = 'You are invited to join {{groupName}}';
+        // Ensure a template exists in the system; use a dedicated template key.
+        const templateKey = 'email_group_invitation';
+        const subject = 'You are invited to join {{groupName}}';
 
-      await notificationService.sendEmail(
-        email,
-        templateKey,
-        {
-          userName: email,
-          groupName,
-          joinLink,
-          creatorUserId,
-        } as any,
-        subject.replace('{{groupName}}', groupName)
-      );
+        await notificationService.sendEmail(
+          email,
+          templateKey,
+          {
+            userName: email,
+            groupName,
+            joinLink,
+            creatorUserId,
+          } as any,
+          subject.replace('{{groupName}}', groupName)
+        );
 
-      res.status(201).json(
-        migrateV1ToV2({
-          invitationId: invitation.id,
-          status: 'sent',
-          joinLink,
-        })
-      );
-    } catch (err: any) {
-      logger.error('Failed to send group invitation', { error: err?.message || String(err) });
-      res.status(500).json(migrateV1ToV2({ error: 'Failed to send invitation' }));
+        res.status(201).json(
+          migrateV1ToV2({
+            invitationId: invitation.id,
+            status: 'sent',
+            joinLink,
+          })
+        );
+      } catch (err: any) {
+        logger.error('Failed to send group invitation', { error: err?.message || String(err) });
+        next(new AppError('GROUP_INVITATION_FAILED', 'Failed to send invitation', 500));
+      }
     }
-  });
+  );
 
   // Backup list — v2 adds pagination
   router.get('/backup', (req: Request, res: Response) => {
@@ -139,12 +146,13 @@ export function createV2Router(services: V1Services): Router {
   });
 
   // All other v2 routes are stubs — return 501 with migration hint
-  router.use((req: Request, res: Response) => {
-    res.status(501).json({
-      error: 'Not implemented in v2 yet',
-      hint: `Try the v1 equivalent: /api/v1${req.path}`,
-      apiVersion: 'v2',
-    });
+  router.use((req: Request, res: Response, next: NextFunction) => {
+    next(
+      new AppError('NOT_IMPLEMENTED', 'Not implemented in v2 yet', 501, {
+        hint: `Try the v1 equivalent: /api/v1${req.path}`,
+        apiVersion: 'v2',
+      })
+    );
   });
 
   return router;

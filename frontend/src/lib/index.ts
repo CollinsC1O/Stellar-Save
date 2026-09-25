@@ -1,5 +1,9 @@
 // lib/index.ts - Barrel exports for lib directory
 
+// ── Typed, validated environment config (single source of truth) ─────────────
+export { env, envSchema, parseEnv, EnvValidationError } from './env';
+export type { Env, StellarNetwork } from './env';
+
 // ── Shared SDK types & contract bindings (single source of truth) ─────────────
 export type {
   Group,
@@ -68,3 +72,7 @@ export * as validation from './validation';
 
 // ── Group filtering predicates ────────────────────────────────────────────────
 export * from './filters';
+
+// ── Clipboard & share-link helpers ───────────────────────────────────────────
+export { copyToClipboard, shareOrCopy, isClipboardSupported, isShareSupported } from './clipboard';
+export type { ShareData, ShareResult } from './clipboard';
