@@ -1,12 +1,13 @@
-import { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box } from '@mui/material';
-import { Skeleton } from '../components/Skeleton/Skeleton';
-import { RouteBoundary } from './RouteBoundary';
-import { routeConfig } from './routes';
-import { ProtectedRoute } from './ProtectedRoute';
+import { Suspense, type JSX } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+
 import { AdminRoute } from './AdminRoute';
 import { ROUTES } from './constants';
+import { ProtectedRoute } from './ProtectedRoute';
+import { RouteBoundary } from './RouteBoundary';
+import { routeConfig } from './routes';
+import { Skeleton } from '../components/Skeleton/Skeleton';
 
 /** Skeleton fallback shown while a lazy route chunk is downloading. */
 function RouteLoadingFallback() {
@@ -68,4 +69,3 @@ export function AppRouter() {
     </Suspense>
   );
 }
-
