@@ -251,11 +251,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Handsoff notes
 
-<!-- handsoff-issue-1687 -->
-- #1687: [Backend] Split admin_service.ts into focused sub-services
+<!-- handsoff-issue-1684 -->
+- #1684: [Backend] Remove deprecated/legacy authentication code paths
 
-<!-- handsoff-issue-1688 -->
-- #1688: [Backend] Standardize database access patterns around Prisma
-
-<!-- handsoff-issue-1689 -->
-- #1689: [Backend] Add database query performance review for analytics_aggregator.ts
+<!-- handsoff-issue-1685 -->
+- #1685: [Backend] Extract rate limiting logic into a single reusable middleware
