@@ -953,7 +953,6 @@ name = "nft-enumerable-example"
 version = "0.1.0"
 dependencies = [
  "soroban-sdk",
- "stellar-macros",
  "stellar-save-common",
  "stellar-tokens",
 ]
