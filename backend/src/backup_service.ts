@@ -231,16 +231,26 @@ export class S3HttpClient implements S3Client {
   }
 }
 
+export interface BackupServiceDeps {
+  s3Client?: S3Client;
+  config?: { backup: { bucket: string; retentionDays: number } };
+}
+
 export class BackupService {
   private jobs = new Map<string, BackupJob>();
   private s3: S3Client;
   private bucket: string;
   private retentionDays: number;
 
-  constructor(s3Client?: S3Client) {
+  constructor(depsOrS3Client?: S3Client | BackupServiceDeps) {
+    const isDeps = depsOrS3Client && typeof depsOrS3Client === 'object' && ('s3Client' in depsOrS3Client || 'config' in depsOrS3Client);
+    const deps = isDeps ? (depsOrS3Client as BackupServiceDeps) : undefined;
+    const s3Client = !isDeps ? (depsOrS3Client as S3Client | undefined) : deps?.s3Client;
+    const resolvedConfig = deps?.config ?? config;
+
     this.s3 = s3Client ?? new S3HttpClient();
-    this.bucket = config.backup.bucket;
-    this.retentionDays = config.backup.retentionDays;
+    this.bucket = resolvedConfig.backup.bucket;
+    this.retentionDays = resolvedConfig.backup.retentionDays;
   }
 
   /** Collect all application data to back up */
