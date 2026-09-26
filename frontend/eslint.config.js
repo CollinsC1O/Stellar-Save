@@ -22,7 +22,8 @@ export default tseslint.config(
       globals: globals.browser,
     },
     rules: {
-      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      // Use utils/logger for debug/info output; raw console.log is banned.
+      'no-console': ['error', { allow: ['warn', 'error'] }],
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': ['error', { fixToUnknown: true }],
     },
@@ -55,6 +56,12 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist', 'coverage'],
+    files: ['src/test/**', '**/*.test.{ts,tsx}', 'e2e/**'],
+    rules: {
+      'no-console': 'off',
+    },
   },
+  {
+    ignores: ['dist', 'coverage'],
+  }
 );
