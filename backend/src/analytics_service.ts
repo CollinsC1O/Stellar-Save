@@ -1,6 +1,7 @@
 import { logger } from './logger';
 import * as redis from './redis';
-//import type { PrismaClient } from '@prisma/client';
+
+import type { PrismaClient } from '@prisma/client';
 
 export interface GroupCycleStats {
   cycleNumber: number;
@@ -99,16 +100,16 @@ export interface AnalyticsReport {
   reportName: string;
   startDate: Date;
   endDate: Date;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   generatedAt: Date;
 }
 
 export class AnalyticsService {
-  private prisma: any;
+  private prisma: PrismaClient;
   private cacheClient = redis;
   private cacheTTL = 3600; // 1 hour default
 
-  constructor(prisma: any) {
+  constructor(prisma: PrismaClient) {
     this.prisma = prisma;
   }
 
@@ -280,7 +281,7 @@ export class AnalyticsService {
         skip: options?.offset,
       });
 
-      return metrics.map((metric: any, index: number) => ({
+      return metrics.map((metric, index: number) => ({
         cycleNumber: index + 1,
         cycleDate: metric.date,
         memberCount: metric.memberCount,
@@ -323,7 +324,7 @@ export class AnalyticsService {
         skip: options?.offset,
       });
 
-      const trends: PlatformStats[] = metrics.map((m: any) => ({
+      const trends: PlatformStats[] = metrics.map((m) => ({
         totalUsers: m.totalUsers,
         activeUsers: m.activeUsers,
         totalGroups: m.totalGroups,
@@ -407,7 +408,7 @@ export class AnalyticsService {
     eventName: string,
     userId?: string,
     groupId?: string,
-    eventData?: Record<string, any>,
+    eventData?: Record<string, unknown>,
     sessionId?: string
   ): Promise<void> {
     try {
@@ -493,15 +494,25 @@ export class AnalyticsService {
     return syncResult;
   }
 
-  private normalizeSorobanEvent(event: any): {
+  private normalizeSorobanEvent(event: {
+    id: string;
+    contractId: string;
+    eventType: string;
+    topics: unknown;
+    data: unknown;
+    txHash: string;
+    ledgerSeq: number;
+    timestamp: Date;
+  }): {
     eventType: string;
     eventName: string;
     userId?: string;
     groupId?: string;
-    eventData?: Record<string, any>;
+    eventData?: Record<string, unknown>;
     sessionId?: string;
   } | null {
     const rawType = String(event.eventType || '').toLowerCase();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- contract event data is an open-ended JSON blob from Soroban; shape is unknown at compile time
     const rawData = (event.data as Record<string, any>) || {};
     const topicString = JSON.stringify(event.topics || []).toLowerCase();
     const payloadString = JSON.stringify(rawData).toLowerCase();
@@ -573,7 +584,7 @@ export class AnalyticsService {
           metricsCount: platformMetrics.length,
           topEvents: eventStats.slice(0, 10),
         },
-        platformMetrics: platformMetrics.map((m: any) => ({
+        platformMetrics: platformMetrics.map((m) => ({
           date: m.date,
           users: m.totalUsers,
           groups: m.totalGroups,
@@ -583,20 +594,20 @@ export class AnalyticsService {
         statistics: {
           avgUsers:
             platformMetrics.length > 0
-              ? platformMetrics.reduce((sum: number, m: any) => sum + m.totalUsers, 0) /
+              ? platformMetrics.reduce((sum: number, m) => sum + m.totalUsers, 0) /
                 platformMetrics.length
               : 0,
           avgGroups:
             platformMetrics.length > 0
-              ? platformMetrics.reduce((sum: number, m: any) => sum + m.totalGroups, 0) /
+              ? platformMetrics.reduce((sum: number, m) => sum + m.totalGroups, 0) /
                 platformMetrics.length
               : 0,
           totalContributions: platformMetrics.reduce(
-            (sum: number, m: any) => sum + m.totalContributions,
+            (sum: number, m) => sum + m.totalContributions,
             0
           ),
           totalRevenue: platformMetrics.reduce(
-            (sum: number, m: any) => sum + Number(m.totalContributionAmount),
+            (sum: number, m) => sum + Number(m.totalContributionAmount),
             0
           ),
         },
@@ -641,12 +652,12 @@ export class AnalyticsService {
         skip: options?.offset,
       });
 
-      return reports.map((r: any) => ({
+      return reports.map((r) => ({
         reportType: r.reportType,
         reportName: r.reportName,
         startDate: r.startDate,
         endDate: r.endDate,
-        data: r.data as Record<string, any>,
+        data: r.data as Record<string, unknown>,
         generatedAt: r.createdAt,
       }));
     } catch (error) {
@@ -689,7 +700,8 @@ export class AnalyticsService {
         select: { data: true },
       });
 
-      const totalContributed = contributionEvents.reduce((sum: number, event: any) => {
+      const totalContributed = contributionEvents.reduce((sum: number, event: { data: unknown }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma JSON field is typed as unknown; amount shape is an open-ended contract blob
         const amount = Number((event.data as any)?.amount ?? 0);
         return sum + (isNaN(amount) ? 0 : amount);
       }, 0);

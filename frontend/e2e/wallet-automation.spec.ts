@@ -23,6 +23,7 @@
  *   ✗ Mobile Capacitor deep-link approval
  *   ✗ iOS / Android build-specific flows
  */
+/* eslint-disable @typescript-eslint/no-explicit-any -- page.addInitScript callbacks run in browser context; window property injection requires `any` to bypass TypeScript's strict Window type */
 import { test, expect } from '@playwright/test';
 
 import type { Page } from '@playwright/test';

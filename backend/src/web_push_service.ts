@@ -24,7 +24,7 @@ export class WebPushService {
   private enabled: boolean;
 
   constructor() {
-    this.prisma = new (PrismaClient as any)();
+    this.prisma = new PrismaClient();
 
     const publicKey = config.vapid.publicKey;
     const privateKey = config.vapid.privateKey;
@@ -119,8 +119,9 @@ export class WebPushService {
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         JSON.stringify(payload)
       );
-    } catch (err: any) {
-      if (err.statusCode === 410 || err.statusCode === 404) {
+    } catch (err: unknown) {
+      const statusCode = (err as { statusCode?: number }).statusCode;
+      if (statusCode === 410 || statusCode === 404) {
         // Subscription has expired or been revoked — clean it up
         await this.prisma.pushSubscription
           .deleteMany({ where: { endpoint: sub.endpoint } })

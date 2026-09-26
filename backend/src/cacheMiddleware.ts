@@ -27,17 +27,17 @@ export const getCacheStats = async () => {
   };
 };
 
-export const get = async (key: string): Promise<any | null> => {
+export const get = async (key: string): Promise<unknown | null> => {
   const data = await redis.get(key);
   if (data) {
     recordHit();
-    return JSON.parse(data);
+    return JSON.parse(data) as unknown;
   }
   recordMiss();
   return null;
 };
 
-export const set = async (key: string, value: any, ttlSeconds: number = 3600) => {
+export const set = async (key: string, value: unknown, ttlSeconds: number = 3600) => {
   await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
 };
 
