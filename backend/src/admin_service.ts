@@ -54,7 +54,8 @@ export class AdminService {
     action: string,
     targetId?: string,
     targetType?: string,
-    metadata?: any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- AuditLog.metadata is an open-ended JSON bag; tightening requires a schema migration
+    metadata?: Record<string, unknown>
   ) {
     const log: AuditLog = {
       id: `log_${Date.now()}`,

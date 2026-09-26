@@ -2,12 +2,12 @@ declare module 'jest-axe' {
   import type { ReactElement } from 'react';
 
   interface AxeNode {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jest-axe type stubs; shape is defined by the external axe-core library
     [key: string]: any;
   }
 
   interface AxeResult {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jest-axe type stubs; shape is defined by the external axe-core library
     [key: string]: any;
   }
 

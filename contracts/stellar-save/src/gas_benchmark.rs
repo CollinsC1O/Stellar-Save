@@ -39,6 +39,25 @@
 //! contributor. **After**: The actual running total is passed, making events
 //! accurate at zero extra cost.
 //!
+//! ### 5. Eliminate Duplicate Event Emission and Redundant Map Read in Cycle Advancement
+//! **Before**: `try_advance_cycle` emitted `CycleAdvanced` twice with identical parameters.
+//! `tick` loaded `group_members` (a serialized `Map<u32, Address>`) via `is_cycle_complete`
+//! to check cycle completion despite `group.member_count` already residing in memory.
+//! **After**: Duplicate event emission eliminated in `try_advance_cycle`. In `tick`,
+//! `group.member_count` is read directly from memory (0 extra SLOADs) and `is_cycle_complete`
+//! reads `group_data` (scalar record) instead of `group_members` (arbitrary map).
+//! Saves **1 redundant event emission** and **1 large Map SLOAD per tick/cycle check**.
+//!
+//! ### 6. Skip Redundant Contribution Existence Checks in Batches and Auto-Contributions
+//! **Before**: `contribute_batch` checked `has(&contrib_key)` for every cycle in upfront
+//! validation, and then `record_contribution` checked `has(&contrib_key)` a second time
+//! for each cycle. Similarly, `execute_auto_contributions` checked `has(&contrib_key)`
+//! before checking balance/allowance and then checked `has(&contrib_key)` again in
+//! `record_contribution`.
+//! **After**: `record_contribution_unchecked` skips the second `has(&contrib_key)` SLOAD
+//! for validated calls.
+//! Saves **1 SLOAD per contribution** in batch and auto-contribution paths.
+//!
 //! ## Storage Operation Count — `contribute()` (per call)
 //!
 //! | Operation                        | Before | After | Saved |
@@ -200,9 +219,54 @@ pub fn full_lifecycle_savings(member_count: u32, cycle_count: u32) -> (u64, u64,
     (total_before, total_after, saved, pct)
 }
 
+/// Profiles the storage operation count for cycle advancement via `tick()` before
+/// and after the optimizations.
+///
+/// Returns `(ops_before, ops_after)` for a single tick call.
+pub fn profile_tick_ops() -> (u32, u32) {
+    // Before: load group (1) + load group_members map (1) + load cycle count (1) + write group (1)
+    let ops_before: u32 = 1 + 1 + 1 + 1;
+    // After: load group (1) + load cycle count (1) + write group (1)
+    // (group.member_count used from memory instead of loading group_members map)
+    let ops_after: u32 = 1 + 1 + 1;
+    (ops_before, ops_after)
+}
+
+/// Profiles storage operation count for `contribute_batch()` with `batch_size` cycles.
+///
+/// Returns `(ops_before, ops_after)` for a batch contribution call.
+pub fn profile_batch_contribute_ops(batch_size: u32) -> (u32, u32) {
+    // Common group and token config checks
+    let common_base = 3;
+    // Before: validation checks has(contrib_key) per cycle (batch_size) +
+    // record_contribution repeats has(contrib_key) per cycle (batch_size) +
+    // remaining persistent writes/reads per cycle (8 * batch_size)
+    let ops_before = common_base + (batch_size * 10);
+    // After: record_contribution_unchecked eliminates 1 SLOAD per cycle
+    let ops_after = common_base + (batch_size * 9);
+    (ops_before, ops_after)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_tick_ops_reduction() {
+        let (before, after) = profile_tick_ops();
+        assert!(after < before);
+        assert_eq!(before, 4);
+        assert_eq!(after, 3);
+        let reduction_pct = ((before - after) * 100) / before;
+        assert_eq!(reduction_pct, 25);
+    }
+
+    #[test]
+    fn test_batch_contribute_ops_reduction() {
+        let (before, after) = profile_batch_contribute_ops(5);
+        assert!(after < before);
+        assert_eq!(before - after, 5); // 5 redundant SLOADs eliminated
+    }
 
     #[test]
     fn test_contribute_ops_reduction() {

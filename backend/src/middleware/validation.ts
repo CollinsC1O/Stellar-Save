@@ -7,7 +7,7 @@ import type { ZodSchema } from 'zod';
 
 
 export interface AuthenticatedRequest extends Request {
-  user?: any;
+  user?: Record<string, unknown>;
 }
 
 export interface ValidationError {
@@ -85,6 +85,7 @@ export class ValidationMiddleware {
     return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
       try {
         const validated = schema.parse(req.query);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Express ParsedQs is not compatible with Zod output; cast required to assign validated query back
         req.query = validated as any;
         next();
       } catch (err) {
@@ -117,6 +118,7 @@ export class ValidationMiddleware {
     return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
       try {
         const validated = schema.parse(req.params);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Express params type is not compatible with Zod output; cast required to assign validated params back
         req.params = validated as any;
         next();
       } catch (err) {

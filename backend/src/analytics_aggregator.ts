@@ -4,6 +4,31 @@ import * as redis from './redis';
 
 import type { PrismaClient } from '@prisma/client';
 
+// ---------------------------------------------------------------------------
+// Helpers for working with Prisma's opaque JsonValue event data fields.
+// The Soroban event payload schema is an open-ended JSON blob, so we access
+// it via a typed narrow helper rather than widening with `any`.
+// ---------------------------------------------------------------------------
+
+/** Narrow a Prisma JsonValue to a plain object so we can read known keys. */
+function asEventData(v: unknown): Record<string, unknown> {
+  if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+    return v as Record<string, unknown>;
+  }
+  return {};
+}
+
+function eventDataType(v: unknown): string | undefined {
+  const d = asEventData(v);
+  return typeof d['type'] === 'string' ? d['type'] : undefined;
+}
+
+function eventDataAmount(v: unknown): number {
+  const d = asEventData(v);
+  const amount = Number(d['amount'] ?? 0);
+  return isNaN(amount) ? 0 : amount;
+}
+
 export class AnalyticsAggregator {
   private prisma: PrismaClient;
   private aggregationInterval: NodeJS.Timer | null = null;
@@ -102,22 +127,22 @@ export class AnalyticsAggregator {
 
       // Count events by type
       const contributions = events.filter(
-        (e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'contribution'
+        (e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'contribution'
       ).length;
       const payouts = events.filter(
-        (e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'payout'
+        (e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'payout'
       ).length;
 
       // Calculate totals from transactions
       const contributionTotal = events
         .filter(
-          (e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'contribution'
+          (e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'contribution'
         )
-        .reduce((sum, e) => sum + ((e.eventData as any)?.amount || 0), 0);
+        .reduce((sum, e) => sum + eventDataAmount(e.eventData), 0);
 
       const payoutTotal = events
-        .filter((e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'payout')
-        .reduce((sum, e) => sum + ((e.eventData as any)?.amount || 0), 0);
+        .filter((e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'payout')
+        .reduce((sum, e) => sum + eventDataAmount(e.eventData), 0);
 
       // Calculate success rate (groups that completed payouts)
       const completedGroups = events.filter((e) => e.eventType === 'group_completed').length;
@@ -208,7 +233,7 @@ export class AnalyticsAggregator {
       });
 
       // Group events by userId
-      const userEvents = new Map<string, any[]>();
+      const userEvents = new Map<string, typeof events>();
       events.forEach((event) => {
         if (event.userId) {
           if (!userEvents.has(event.userId)) {
@@ -226,17 +251,17 @@ export class AnalyticsAggregator {
           (e) => e.eventType === 'group_completed'
         ).length;
         const contributions = userEventList.filter(
-          (e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'contribution'
+          (e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'contribution'
         ).length;
         const contributionAmount = userEventList
           .filter(
-            (e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'contribution'
+            (e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'contribution'
           )
-          .reduce((sum, e) => sum + ((e.eventData as any)?.amount || 0), 0);
+          .reduce((sum, e) => sum + eventDataAmount(e.eventData), 0);
 
         const payoutsReceived = userEventList
-          .filter((e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'payout')
-          .reduce((sum, e) => sum + ((e.eventData as any)?.amount || 0), 0);
+          .filter((e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'payout')
+          .reduce((sum, e) => sum + eventDataAmount(e.eventData), 0);
 
         const sessions = new Set(userEventList.map((e) => e.sessionId).filter(Boolean)).size;
         const pageViews = userEventList.filter((e) => e.eventType === 'page_view').length;
@@ -316,7 +341,7 @@ export class AnalyticsAggregator {
       });
 
       // Group events by groupId
-      const groupEvents = new Map<string, any[]>();
+      const groupEvents = new Map<string, typeof events>();
       events.forEach((event) => {
         if (event.groupId) {
           if (!groupEvents.has(event.groupId)) {
@@ -330,17 +355,17 @@ export class AnalyticsAggregator {
       for (const [groupId, groupEventList] of groupEvents.entries()) {
         const members = new Set(groupEventList.map((e) => e.userId).filter(Boolean)).size;
         const contributions = groupEventList.filter(
-          (e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'contribution'
+          (e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'contribution'
         ).length;
         const contributionAmount = groupEventList
           .filter(
-            (e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'contribution'
+            (e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'contribution'
           )
-          .reduce((sum, e) => sum + ((e.eventData as any)?.amount || 0), 0);
+          .reduce((sum, e) => sum + eventDataAmount(e.eventData), 0);
 
         const payoutsDistributed = groupEventList
-          .filter((e) => e.eventType === 'transaction' && (e.eventData as any)?.type === 'payout')
-          .reduce((sum, e) => sum + ((e.eventData as any)?.amount || 0), 0);
+          .filter((e) => e.eventType === 'transaction' && eventDataType(e.eventData) === 'payout')
+          .reduce((sum, e) => sum + eventDataAmount(e.eventData), 0);
 
         const completed = groupEventList.filter((e) => e.eventType === 'group_completed').length;
 

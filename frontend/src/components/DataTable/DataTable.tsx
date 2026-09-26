@@ -56,7 +56,7 @@ export interface DataTableProps<T> {
   columns: DataTableColumn<T>[];
   /** Row data array. Each row must have a unique `id` field (or provide `rowKey`). */
   rows: T[];
-  /** Function that returns a unique key for each row. Defaults to `(row) => (row as any).id`. */
+  /** Function that returns a unique key for each row. Defaults to `(row) => (row as Record<string, unknown>)['id']`. */
   rowKey?: (row: T) => string | number;
   /** Whether data is currently loading */
   loading?: boolean;

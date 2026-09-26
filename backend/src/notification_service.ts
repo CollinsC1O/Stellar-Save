@@ -8,7 +8,8 @@ import { prisma } from './prisma_client';
  */
 export class NotificationService {
   private sendgridApiKey: string;
-  private firebaseServiceAccount?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Firebase service account is parsed from a raw JSON string; schema varies by Firebase SDK version
+  private firebaseServiceAccount?: Record<string, unknown>;
   private firebaseProjectId?: string;
   private notificationProvidersEnabled: boolean;
 
@@ -36,7 +37,7 @@ export class NotificationService {
   async sendEmail(
     to: string,
     templateId: string,
-    templateData: Record<string, any>,
+    templateData: Record<string, unknown>,
     subject: string
   ): Promise<string> {
     try {
@@ -115,7 +116,7 @@ export class NotificationService {
   async sendPushNotification(
     deviceToken: string,
     templateId: string,
-    templateData: Record<string, any>,
+    templateData: Record<string, unknown>,
     title: string,
     body: string
   ): Promise<string> {
@@ -190,7 +191,7 @@ export class NotificationService {
    */
   private async sendViaFirebase(
     deviceToken: string,
-    payload: { title: string; body: string; data: Record<string, any> }
+    payload: { title: string; body: string; data: Record<string, unknown> }
   ): Promise<string> {
     // This would use Firebase Admin SDK to send messages
     // For now, return a mock message ID
@@ -216,7 +217,7 @@ export class NotificationService {
     userId: string,
     templateKey: string,
     recipient: string,
-    templateData: Record<string, any>,
+    templateData: Record<string, unknown>,
     notificationType: 'email' | 'push',
     priority: number = 0,
     scheduledFor?: Date
@@ -325,7 +326,7 @@ export class NotificationService {
     recipient: string;
     subject?: string;
     renderedContent: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     externalId?: string;
     status: string;
     failureReason?: string;
@@ -357,7 +358,7 @@ export class NotificationService {
   /**
    * Render a template with data
    */
-  private renderTemplate(template: string, data: Record<string, any>): string {
+  private renderTemplate(template: string, data: Record<string, unknown>): string {
     let rendered = template;
 
     // Replace placeholders like {{userName}} or {{groupName}}
@@ -372,7 +373,7 @@ export class NotificationService {
   /**
    * Get notification history for a user
    */
-  async getNotificationHistory(userId: string, limit: number = 20): Promise<any[]> {
+  async getNotificationHistory(userId: string, limit: number = 20): Promise<unknown[]> {
     return await prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -397,7 +398,7 @@ export class NotificationService {
     ]);
 
     const byType: Record<string, number> = {};
-    queue.forEach((item: any) => {
+    queue.forEach((item: { notificationType: string }) => {
       byType[item.notificationType] = (byType[item.notificationType] || 0) + 1;
     });
 
