@@ -182,64 +182,95 @@ export class OneSignalProvider implements PushNotificationProvider {
 /**
  * Push Notification Service Manager
  * Handles sending push notifications via multiple providers
+ *
+ * Refactored for dependency injection (Issue #1701):
+ * - Providers, defaultProvider, config, and logger can be injected
  */
+export interface PushNotificationServiceDeps {
+  providers?: Map<string, PushNotificationProvider>;
+  defaultProvider?: string;
+  config?: {
+    push: {
+      provider: string;
+      firebase: { projectId?: string; serviceAccount?: string };
+      onesignal: { appId?: string; apiKey?: string };
+    };
+    apns: { keyId?: string; teamId?: string; key?: string; bundleId?: string };
+    nodeEnv: string;
+  };
+  logger?: { info: (...a: unknown[]) => void; error: (...a: unknown[]) => void; warn: (...a: unknown[]) => void; debug: (...a: unknown[]) => void };
+}
+
 export class PushNotificationService {
   private providers: Map<string, PushNotificationProvider> = new Map();
   private defaultProvider: string;
+  private readonly log: NonNullable<PushNotificationServiceDeps['logger']>;
 
-  constructor() {
-    this.setupProviders();
-    this.defaultProvider = config.push.provider;
+  constructor(deps?: PushNotificationServiceDeps) {
+    this.log = deps?.logger ?? logger;
+    const resolvedConfig = deps?.config ?? config;
+    this.defaultProvider = deps?.defaultProvider ?? resolvedConfig.push.provider;
+
+    if (deps?.providers) {
+      this.providers = new Map(deps.providers);
+    } else {
+      this.setupProviders(resolvedConfig);
+    }
   }
 
-  private setupProviders(): void {
+  private setupProviders(resolvedConfig: NonNullable<PushNotificationServiceDeps['config']>): void {
     // Firebase provider
-    if (config.push.firebase.projectId && config.push.firebase.serviceAccount) {
+    if (resolvedConfig.push.firebase.projectId && resolvedConfig.push.firebase.serviceAccount) {
       try {
         const firebase = new FirebaseProvider(
-          config.push.firebase.projectId,
-          config.push.firebase.serviceAccount
+          resolvedConfig.push.firebase.projectId,
+          resolvedConfig.push.firebase.serviceAccount
         );
         this.providers.set('firebase', firebase);
-        logger.info('Firebase provider initialized');
+        this.log.info('Firebase provider initialized');
       } catch (error) {
-        logger.error('Failed to initialize Firebase provider', { error: String(error) });
+        this.log.error('Failed to initialize Firebase provider', { error: String(error) });
       }
     }
 
     // OneSignal provider
-    if (config.push.onesignal.appId && config.push.onesignal.apiKey) {
+    if (resolvedConfig.push.onesignal.appId && resolvedConfig.push.onesignal.apiKey) {
       try {
         const oneSignal = new OneSignalProvider(
-          config.push.onesignal.appId,
-          config.push.onesignal.apiKey
+          resolvedConfig.push.onesignal.appId,
+          resolvedConfig.push.onesignal.apiKey
         );
         this.providers.set('onesignal', oneSignal);
-        logger.info('OneSignal provider initialized');
+        this.log.info('OneSignal provider initialized');
       } catch (error) {
-        logger.error('Failed to initialize OneSignal provider', { error: String(error) });
+        this.log.error('Failed to initialize OneSignal provider', { error: String(error) });
       }
     }
 
     // APNs provider
-    if (config.apns.keyId && config.apns.teamId && config.apns.key && config.apns.bundleId) {
+    if (
+      resolvedConfig.apns.keyId &&
+      resolvedConfig.apns.teamId &&
+      resolvedConfig.apns.key &&
+      resolvedConfig.apns.bundleId
+    ) {
       try {
         const apns = new ApnsProvider(
-          config.apns.keyId,
-          config.apns.teamId,
-          config.apns.key.replace(/\\n/g, '\n'),
-          config.apns.bundleId,
-          config.nodeEnv === 'production'
+          resolvedConfig.apns.keyId,
+          resolvedConfig.apns.teamId,
+          resolvedConfig.apns.key.replace(/\\n/g, '\n'),
+          resolvedConfig.apns.bundleId,
+          resolvedConfig.nodeEnv === 'production'
         );
         this.providers.set('apns', apns);
-        logger.info('APNs provider initialized');
+        this.log.info('APNs provider initialized');
       } catch (error) {
-        logger.error('Failed to initialize APNs provider', { error: String(error) });
+        this.log.error('Failed to initialize APNs provider', { error: String(error) });
       }
     }
 
     if (this.providers.size === 0) {
-      logger.warn('No push notification providers configured');
+      this.log.warn('No push notification providers configured');
     }
   }
 

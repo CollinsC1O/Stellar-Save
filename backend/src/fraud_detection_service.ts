@@ -12,16 +12,42 @@ export interface FraudScore {
 
 const HIGH_RISK_THRESHOLD = 0.7;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DbClient = any;
+
+/**
+ * Fraud detection service.
+ *
+ * Refactored for dependency injection (Issue #1701):
+ * - DB client, config, and logger are injected via constructor
+ */
+export interface FraudDetectionServiceDeps {
+  db?: DbClient;
+  config?: { fraud: { sybilThreshold: number; rapidCycleHours: number; outlierFactor: number } };
+  logger?: { info: (...a: unknown[]) => void; error: (...a: unknown[]) => void; warn: (...a: unknown[]) => void; debug: (...a: unknown[]) => void };
+}
+
 export class FraudDetectionService {
-  private readonly sybilThreshold = config.fraud.sybilThreshold;
-  private readonly rapidCycleHours = config.fraud.rapidCycleHours;
-  private readonly outlierFactor = config.fraud.outlierFactor;
+  private readonly sybilThreshold: number;
+  private readonly rapidCycleHours: number;
+  private readonly outlierFactor: number;
+  private readonly db: DbClient;
+  private readonly log: NonNullable<FraudDetectionServiceDeps['logger']>;
+
+  constructor(deps?: FraudDetectionServiceDeps) {
+    const resolvedConfig = deps?.config ?? config;
+    this.sybilThreshold = resolvedConfig.fraud.sybilThreshold;
+    this.rapidCycleHours = resolvedConfig.fraud.rapidCycleHours;
+    this.outlierFactor = resolvedConfig.fraud.outlierFactor;
+    this.db = deps?.db ?? prisma;
+    this.log = deps?.logger ?? logger;
+  }
 
   async scoreAccount(address: string): Promise<FraudScore> {
     const windowMs = this.rapidCycleHours * 60 * 60 * 1000;
     const since = new Date(Date.now() - windowMs);
 
-    const recentCreations = await (prisma as any).contractEvent.count({
+    const recentCreations = await this.db.contractEvent.count({
       where: {
         eventType: 'GroupCreated',
         data: { path: ['creator'], equals: address },
@@ -47,11 +73,11 @@ export class FraudDetectionService {
     const evidence: Record<string, unknown> = {};
 
     // Rapid create/dissolve
-    const created = await (prisma as any).contractEvent.findFirst({
+    const created = await this.db.contractEvent.findFirst({
       where: { eventType: 'GroupCreated', data: { path: ['group_id'], equals: groupId } },
       orderBy: { timestamp: 'asc' },
     });
-    const completed = await (prisma as any).contractEvent.findFirst({
+    const completed = await this.db.contractEvent.findFirst({
       where: {
         eventType: { in: ['GroupCompleted', 'GroupDissolved'] },
         data: { path: ['group_id'], equals: groupId },
@@ -70,13 +96,15 @@ export class FraudDetectionService {
     }
 
     // Abnormal contribution amounts
-    const contributions = await (prisma as any).contractEvent.findMany({
+    const contributions = await this.db.contractEvent.findMany({
       where: { eventType: 'ContributionMade', data: { path: ['group_id'], equals: groupId } },
       select: { data: true },
     });
 
     if (contributions.length > 1) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const amounts = contributions
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((c: any) => Number(c.data?.amount ?? 0))
         .filter((a: number) => a > 0);
       const avg = amounts.reduce((s: number, a: number) => s + a, 0) / amounts.length;
@@ -95,7 +123,7 @@ export class FraudDetectionService {
   async runScan(): Promise<FraudScore[]> {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const recentEvents = await (prisma as any).contractEvent.findMany({
+    const recentEvents = await this.db.contractEvent.findMany({
       where: { timestamp: { gte: since } },
       select: { eventType: true, data: true },
     });
@@ -127,7 +155,7 @@ export class FraudDetectionService {
       }
     }
 
-    logger.info('Fraud scan complete', {
+    this.log.info('Fraud scan complete', {
       flagged: scores.length,
       accounts: accounts.size,
       groups: groups.size,
@@ -136,7 +164,7 @@ export class FraudDetectionService {
   }
 
   private async persistFlag(score: FraudScore): Promise<void> {
-    await (prisma as any).fraudFlag
+    await this.db.fraudFlag
       .upsert({
         where: {
           // use a composite-like lookup — store as single entityType+entityId lookup via findFirst
@@ -159,7 +187,7 @@ export class FraudDetectionService {
       })
       .catch(async () => {
         // If id collision, just create a new flag
-        await (prisma as any).fraudFlag.create({
+        await this.db.fraudFlag.create({
           data: {
             entityType: score.entityType,
             entityId: score.entityId,
@@ -172,14 +200,14 @@ export class FraudDetectionService {
   }
 
   async getFlags(status?: string): Promise<unknown[]> {
-    return (prisma as any).fraudFlag.findMany({
+    return this.db.fraudFlag.findMany({
       where: status ? { status } : {},
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async reviewFlag(id: string, status: string, reviewedBy: string): Promise<unknown> {
-    return (prisma as any).fraudFlag.update({
+    return this.db.fraudFlag.update({
       where: { id },
       data: { status, reviewedBy, reviewedAt: new Date() },
     });
