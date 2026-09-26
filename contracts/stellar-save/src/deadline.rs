@@ -162,6 +162,10 @@ pub fn get_deadline_extension(env: &Env, group_id: u64, cycle: u32) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::{
+        DEFAULT_TEST_TIMESTAMP, NON_EXISTENT_GROUP_ID, ONE_HOUR_SECONDS, ONE_WEEK_SECONDS,
+        STROOPS_PER_XLM, THREE_HOURS_SECONDS, TWO_HOURS_SECONDS,
+    };
     use crate::time_source::FixedTimeSource;
     use soroban_sdk::{testutils::Address as _, Address, Env};
 
@@ -170,10 +174,10 @@ mod tests {
         let group = Group::new(
             group_id,
             creator.clone(),
-            10_000_000, // 1 XLM
-            604_800,    // 1 week
+            STROOPS_PER_XLM,        // 1 XLM in stroops
+            ONE_WEEK_SECONDS,       // 1 week duration
             5,
-            1_000_000, // created_at
+            DEFAULT_TEST_TIMESTAMP, // created_at
         );
         let key = StorageKeyBuilder::group_data(group_id);
         env.storage().persistent().set(&key, &group);
@@ -189,11 +193,11 @@ mod tests {
         let creator = Address::generate(&env);
         let group_id = setup_group(&env, &creator);
 
-        let result = extend_deadline(&env, creator.clone(), group_id, 0, 3600);
+        let result = extend_deadline(&env, creator.clone(), group_id, 0, ONE_HOUR_SECONDS);
         assert!(result.is_ok());
 
         let ext = get_deadline_extension(&env, group_id, 0);
-        assert_eq!(ext, 3600);
+        assert_eq!(ext, ONE_HOUR_SECONDS);
     }
 
     #[test]
@@ -203,11 +207,11 @@ mod tests {
         let creator = Address::generate(&env);
         let group_id = setup_group(&env, &creator);
 
-        extend_deadline(&env, creator.clone(), group_id, 0, 3600).unwrap();
-        extend_deadline(&env, creator.clone(), group_id, 0, 7200).unwrap();
+        extend_deadline(&env, creator.clone(), group_id, 0, ONE_HOUR_SECONDS).unwrap();
+        extend_deadline(&env, creator.clone(), group_id, 0, TWO_HOURS_SECONDS).unwrap();
 
         let ext = get_deadline_extension(&env, group_id, 0);
-        assert_eq!(ext, 10_800);
+        assert_eq!(ext, THREE_HOURS_SECONDS);
     }
 
     #[test]
@@ -255,7 +259,7 @@ mod tests {
         env.mock_all_auths();
         let caller = Address::generate(&env);
 
-        let result = extend_deadline(&env, caller, 9999, 0, 3600);
+        let result = extend_deadline(&env, caller, NON_EXISTENT_GROUP_ID, 0, ONE_HOUR_SECONDS);
         assert_eq!(result, Err(StellarSaveError::GroupNotFound));
     }
 
@@ -267,7 +271,7 @@ mod tests {
         let other = Address::generate(&env);
         let group_id = setup_group(&env, &creator);
 
-        let result = extend_deadline(&env, other, group_id, 0, 3600);
+        let result = extend_deadline(&env, other, group_id, 0, ONE_HOUR_SECONDS);
         assert_eq!(result, Err(StellarSaveError::Unauthorized));
     }
 
@@ -284,7 +288,7 @@ mod tests {
         group.deactivate();
         env.storage().persistent().set(&key, &group);
 
-        let result = extend_deadline(&env, creator, group_id, 0, 3600);
+        let result = extend_deadline(&env, creator, group_id, 0, ONE_HOUR_SECONDS);
         assert_eq!(result, Err(StellarSaveError::InvalidState));
     }
 
@@ -295,11 +299,11 @@ mod tests {
         let creator = Address::generate(&env);
         let group_id = setup_group(&env, &creator);
 
-        extend_deadline(&env, creator.clone(), group_id, 0, 3600).unwrap();
-        extend_deadline(&env, creator.clone(), group_id, 1, 7200).unwrap();
+        extend_deadline(&env, creator.clone(), group_id, 0, ONE_HOUR_SECONDS).unwrap();
+        extend_deadline(&env, creator.clone(), group_id, 1, TWO_HOURS_SECONDS).unwrap();
 
-        assert_eq!(get_deadline_extension(&env, group_id, 0), 3600);
-        assert_eq!(get_deadline_extension(&env, group_id, 1), 7200);
+        assert_eq!(get_deadline_extension(&env, group_id, 0), ONE_HOUR_SECONDS);
+        assert_eq!(get_deadline_extension(&env, group_id, 1), TWO_HOURS_SECONDS);
     }
 
     #[test]
