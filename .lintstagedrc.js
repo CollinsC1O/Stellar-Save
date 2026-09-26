@@ -1,7 +1,11 @@
+// ESLint 9 resolves eslint.config.* from the cwd (repo root, which has none),
+// so look it up per file and only lint workspaces that define a config.
+const eslint = 'eslint --flag v10_config_lookup_from_file --max-warnings 0';
+
 module.exports = {
-  // TypeScript and JavaScript files: lint + format check
-  '*.{ts,tsx}': ['eslint --max-warnings 0', 'prettier --check'],
-  '*.{js,jsx,mjs,cjs}': ['eslint --max-warnings 0', 'prettier --check'],
+  // TypeScript and JavaScript files: lint (workspaces with an ESLint config) + format check
+  '{frontend,backend,mobile}/**/*.{ts,tsx,js,jsx,mjs,cjs}': [eslint],
+  '*.{ts,tsx,js,jsx,mjs,cjs}': ['prettier --check'],
 
   // CSS files (frontend): stylelint
   'frontend/**/*.css': ['stylelint'],
