@@ -14,5 +14,7 @@
 
 pub mod constants;
 pub mod error;
+pub mod fuzz;
 
 pub use error::{CommonResult, Error, ErrorCategory};
+pub use fuzz::{FuzzRng, FuzzRunner};
