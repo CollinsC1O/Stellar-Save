@@ -10,6 +10,7 @@
 //! ```
 
 // ─── XLM / Stroop Conversions ─────────────────────────────────────────────────
+// ─── XLM / Stroop Conversions ─────────────────────────────────────────────────
 
 /// Number of stroops in one XLM.
 ///
