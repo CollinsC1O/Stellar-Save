@@ -15,6 +15,7 @@ This guide covers everything you need to get started: environment setup, coding 
 - [Development Setup](#development-setup)
 - [Project Structure](#project-structure)
 - [Coding Standards](#coding-standards)
+- [Git Hooks](#git-hooks)
 - [Commit Message Conventions](#commit-message-conventions)
 - [Testing Requirements](#testing-requirements)
 - [Pull Request Process](#pull-request-process)
@@ -158,8 +159,12 @@ Stellar-Save/
 
 ### Rust (smart contract)
 
-- Run `cargo fmt` before every commit — formatting is enforced in CI
-- Run `cargo clippy -- -D warnings` and fix all warnings before opening a PR
+- Run `cargo fmt --all` before every commit — formatting is enforced in CI via `cargo fmt --check`
+- Run `cargo clippy --all-targets --all-features -- -D warnings` and fix all warnings before opening a PR
+- If a Clippy warning is a genuine false positive, suppress it with `#[allow(...)]` and a one-line comment explaining why, e.g.:
+  ```rust
+  #[allow(clippy::too_many_arguments)] // contract entry point mirrors the on-chain ABI; cannot be split
+  ```
 - Keep functions small and single-purpose
 - Use descriptive names; avoid single-letter variables outside iterators
 - Document all public items with `///` doc comments
@@ -188,6 +193,7 @@ pub fn require_creator(env: &Env, group: &Group) -> Result<(), ContractError> {
 - Keep components under ~150 lines; extract sub-components when they grow larger
 - Use semantic HTML for accessibility (`<button>`, `<nav>`, `<main>`, etc.)
 - Run `npm run lint` before committing — ESLint is enforced in CI
+- **`no-unused-vars` and `@typescript-eslint/no-explicit-any` are both set to `error`** repo-wide in `eslint.config.base.js`. Violations block the pre-commit hook and CI. If a genuine exception is needed (e.g. a pending Prisma migration model, a browser-context injection in Playwright), add an inline `// eslint-disable-next-line @typescript-eslint/no-explicit-any -- <one-line justification>` comment.
 - **Import Ordering**: enforced by `eslint-plugin-import` (`import/order`, error). Groups are separated by a blank line, imports sorted alphabetically (case-insensitive) within each group: `builtin` → `external` → `internal` → `parent`/`sibling` (`../`, `./`) → `index` → `type`. See the `import/order` rule in `eslint.config.base.js`.
 - **Circular Dependencies**: Circular dependencies are strictly forbidden (`import/no-cycle`). Ensure modules are strictly decoupled and acyclic
 
@@ -219,6 +225,62 @@ const ContributionCard = ({ amount, member, isPaid }: ContributionCardProps) => 
   - **Trailing whitespace** trimmed automatically (except in Markdown `.md` files)
   - **Indentation**: 4 spaces for Rust (`.rs`); 2 spaces for TypeScript (`.ts`, `.tsx`), JavaScript, JSON, CSS/SCSS, Shell, TOML, YAML, and SQL
 - Do not commit secrets, private keys, or `.env` files — `.gitignore` covers common cases but double-check before staging
+
+---
+
+## Git Hooks
+
+This repository uses [Husky](https://typicode.github.io/husky) to run quality gates automatically on every `git commit` and `git push`. Hooks are installed automatically when you run `pnpm install` (via the `prepare` script).
+
+### pre-commit — lint + format check on staged files
+
+The `.husky/pre-commit` hook runs **lint-staged** (`.lintstagedrc.js`), which applies the following checks to every staged file:
+
+| File pattern              | Checks run                                    |
+| ------------------------- | --------------------------------------------- |
+| `*.{ts,tsx}`              | `eslint --max-warnings 0`, `prettier --check` |
+| `*.{js,jsx,mjs,cjs}`      | `eslint --max-warnings 0`, `prettier --check` |
+| `frontend/**/*.css`       | `stylelint`                                   |
+| `*.{json,yaml,yml}`       | `prettier --check`                            |
+| `*.md`                    | `prettier --check`                            |
+
+This means:
+- **Lint violations** (including `@typescript-eslint/no-explicit-any` and `no-unused-vars`, both set to `error` repo-wide in `eslint.config.base.js`) will block the commit.
+- **Formatting violations** detected by Prettier will block the commit.
+
+Run `pnpm format` to auto-fix formatting before committing.
+
+### commit-msg — conventional commit enforcement
+
+The `.husky/commit-msg` hook runs `commitlint` to validate that your commit message follows the [Conventional Commits](https://www.conventionalcommits.org/) format. See [Commit Message Conventions](#commit-message-conventions) for the full spec.
+
+### pre-push — dependency vulnerability audit
+
+The `.husky/pre-push` hook runs a vulnerability audit before every `git push`. See [Security: Pre-push Dependency Audit](#security-pre-push-dependency-audit) for details.
+
+### Bypass policy — `--no-verify`
+
+> ⚠️ **Using `--no-verify` is strongly discouraged** and will be flagged during code review.
+
+`git commit --no-verify` and `git push --no-verify` bypass all hooks. This is intentionally difficult — the hooks exist to catch real problems. The only accepted reasons to bypass are:
+
+- **WIP commits to a personal branch** that you intend to squash before opening a PR (document this in the PR description).
+- **Emergency hotfixes** where a critical production issue requires an immediate push and the violation is already tracked as a follow-up issue.
+
+In all other cases, fix the violation before committing. If the hook is producing a false positive, fix the rule (with a justified `eslint-disable` comment or by updating the config) and commit that fix in the same PR.
+
+### Rust local pre-commit recommendation
+
+For Rust code, the CI gate enforces both `cargo fmt --check` and `cargo clippy`. To catch these locally before pushing, add the following to your workflow:
+
+```bash
+# Before committing Rust changes:
+cargo fmt --all              # auto-fix formatting
+cargo clippy --all-targets --all-features -- -D warnings   # must be clean
+cargo test --workspace       # must pass
+```
+
+These are not wired into the Husky hooks (Rust tooling is not universally available in all contributor environments) but are **required to pass in CI**. A failing clippy or fmt check will block your PR.
 
 ---
 
