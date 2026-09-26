@@ -628,13 +628,7 @@ pub fn execute_upgrade(
 
 /// Panics if `caller` is not the contract admin.
 pub fn require_admin(env: &Env, caller: &Address) {
-    caller.require_auth();
-    let config: ContractConfig = env
-        .storage()
-        .persistent()
-        .get(&StorageKeyBuilder::contract_config())
-        .expect("contract not initialised");
-    if config.admin != *caller {
+    if crate::auth::require_admin(env, caller).is_err() {
         panic!("migration: caller is not admin");
     }
 }

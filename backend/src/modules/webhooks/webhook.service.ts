@@ -50,7 +50,7 @@ export class WebhookService {
     return { success: true };
   }
 
-  async dispatchEvent(event: string, payload: any) {
+  async dispatchEvent(event: string, payload: Record<string, unknown>) {
     logger.info(`Event dispatched: ${event}`, payload);
     // TODO: Implement real logic with Prisma later
   }
