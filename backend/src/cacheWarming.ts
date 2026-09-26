@@ -18,7 +18,7 @@ const warmData = {
 };
 
 export const startWarmingJob = async () => {
-  console.log('🔥 Starting cache warming job...');
+  logger.info('Starting cache warming job');
 
   for (const [endpoint, data] of Object.entries(warmData)) {
     const cacheKey = CacheKeyBuilder.cacheWarming(endpoint);
@@ -26,10 +26,10 @@ export const startWarmingJob = async () => {
     console.log(`Warmed: ${endpoint}`);
   }
 
-  console.log('✅ Cache warming completed');
+  logger.info('Cache warming completed');
 
   setInterval(async () => {
-    console.log('🔄 Running scheduled cache warming...');
+    logger.debug('Running scheduled cache warming');
     for (const [endpoint, data] of Object.entries(warmData)) {
       const cacheKey = CacheKeyBuilder.cacheWarming(endpoint);
       await set(cacheKey, data, CACHE_TTL_SECONDS.CACHE_WARMING_DEFAULT);

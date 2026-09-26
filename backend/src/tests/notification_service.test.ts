@@ -23,8 +23,8 @@ describe('Notification Service', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    notificationService = new NotificationService();
     prismaClient = new PrismaClient();
+    notificationService = new NotificationService({ db: prismaClient });
   });
 
   describe('Email Notifications', () => {

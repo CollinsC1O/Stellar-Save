@@ -12,9 +12,13 @@ jest.mock('@aws-sdk/client-secrets-manager');
 
 describe('SecretsManagerService', () => {
   let service: SecretsManagerService;
+  let mockClient: any;
 
   beforeEach(() => {
-    service = new SecretsManagerService();
+    mockClient = {
+      send: jest.fn().mockResolvedValue({ SecretString: 'test-value' }),
+    };
+    service = new SecretsManagerService({ client: mockClient });
     jest.clearAllMocks();
   });
 
