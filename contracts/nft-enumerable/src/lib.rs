@@ -15,3 +15,5 @@ mod test;
 mod test_utils;
 #[cfg(test)]
 mod benchmark_tests;
+#[cfg(test)]
+mod burn_edge_case_tests;

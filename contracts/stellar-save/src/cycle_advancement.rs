@@ -113,19 +113,8 @@ pub fn try_advance_cycle(
         return Ok(false);
     }
 
-    // Prevent skipping more than one cycle at a time
-    let next_cycle = group.current_cycle + 1;
-
-    // Emit CycleEnded for the cycle we're leaving
-    EventEmitter::emit_cycle_advanced(
-        env,
-        group_id,
-        group.current_cycle,
-        next_cycle,
-        true,
-        false,
-        now,
-    );
+    // Record old cycle before advancing
+    let old_cycle = group.current_cycle;
 
     // Advance the cycle counter (group.advance_cycle also handles completion)
     group.advance_cycle(env);
@@ -133,12 +122,12 @@ pub fn try_advance_cycle(
     // Persist updated group
     env.storage().persistent().set(&group_key, &group);
 
-    // Emit CycleStarted for the new cycle (only if group is still running)
+    // Emit CycleAdvanced for the new cycle (only if group is still running)
     if !group.is_complete() {
         EventEmitter::emit_cycle_advanced(
             env,
             group_id,
-            group.current_cycle.saturating_sub(1),
+            old_cycle,
             group.current_cycle,
             true,
             false,
