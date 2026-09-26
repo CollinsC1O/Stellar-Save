@@ -1,5 +1,7 @@
 import { logger } from './logger';
 import * as redis from './redis';
+import { CacheKeyBuilder } from './lib/cache-key-builder';
+import { CACHE_TTL_SECONDS } from './lib/cache-config';
 
 import type { PrismaClient } from '@prisma/client';
 
@@ -107,7 +109,6 @@ export interface AnalyticsReport {
 export class AnalyticsService {
   private prisma: PrismaClient;
   private cacheClient = redis;
-  private cacheTTL = 3600; // 1 hour default
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
@@ -118,11 +119,12 @@ export class AnalyticsService {
    */
   async getPlatformStats(date?: Date): Promise<PlatformStats | null> {
     const targetDate = date || new Date();
-    const cacheKey = `platform_stats:${targetDate.toISOString().split('T')[0]}`;
+    const dateStr = targetDate.toISOString().split('T')[0];
+    const cacheKey = CacheKeyBuilder.analyticsPlatformStats(dateStr);
 
     // Try to get from cache
     const cached = await this.cacheClient.get(cacheKey);
-    if (cached) return cached;
+    if (cached) return cached as PlatformStats;
 
     try {
       // Set and return default if no metrics found for this date
@@ -153,7 +155,7 @@ export class AnalyticsService {
       };
 
       // Cache the result
-      await this.cacheClient.set(cacheKey, stats, this.cacheTTL);
+      await this.cacheClient.set(cacheKey, stats, CACHE_TTL_SECONDS.ANALYTICS_PLATFORM_STATS);
       return stats;
     } catch (error) {
       logger.error('Error fetching platform stats:', error);
@@ -166,11 +168,12 @@ export class AnalyticsService {
    */
   async getUserStats(userId: string, date?: Date): Promise<UserStats | null> {
     const targetDate = date || new Date();
-    const cacheKey = `user_stats:${userId}:${targetDate.toISOString().split('T')[0]}`;
+    const dateStr = targetDate.toISOString().split('T')[0];
+    const cacheKey = CacheKeyBuilder.analyticsUserStats(userId, dateStr);
 
     // Try to get from cache
     const cached = await this.cacheClient.get(cacheKey);
-    if (cached) return cached;
+    if (cached) return cached as UserStats;
 
     try {
       const metrics = await this.prisma.userMetrics.findFirst({
@@ -200,7 +203,7 @@ export class AnalyticsService {
       };
 
       // Cache the result
-      await this.cacheClient.set(cacheKey, stats, this.cacheTTL);
+      await this.cacheClient.set(cacheKey, stats, CACHE_TTL_SECONDS.ANALYTICS_USER_STATS);
       return stats;
     } catch (error) {
       logger.error('Error fetching user stats:', error);
@@ -213,11 +216,12 @@ export class AnalyticsService {
    */
   async getGroupStats(groupId: string, date?: Date): Promise<GroupStats | null> {
     const targetDate = date || new Date();
-    const cacheKey = `group_stats:${groupId}:${targetDate.toISOString().split('T')[0]}`;
+    const dateStr = targetDate.toISOString().split('T')[0];
+    const cacheKey = `group_stats:${groupId}:${dateStr}`;
 
     // Try to get from cache
     const cached = await this.cacheClient.get(cacheKey);
-    if (cached) return cached;
+    if (cached) return cached as GroupStats;
 
     try {
       const metrics = await this.prisma.groupMetrics.findFirst({
@@ -248,7 +252,7 @@ export class AnalyticsService {
       };
 
       // Cache the result
-      await this.cacheClient.set(cacheKey, stats, this.cacheTTL);
+      await this.cacheClient.set(cacheKey, stats, CACHE_TTL_SECONDS.DEFAULT);
       return stats;
     } catch (error) {
       logger.error('Error fetching group stats:', error);
@@ -309,7 +313,7 @@ export class AnalyticsService {
   ): Promise<PlatformStats[]> {
     const cacheKey = `platform_trends:${startDate.getTime()}:${endDate.getTime()}`;
     const cached = await this.cacheClient.get(cacheKey);
-    if (cached) return cached;
+    if (cached) return cached as PlatformStats[];
 
     try {
       const metrics = await this.prisma.platformMetrics.findMany({
@@ -339,7 +343,7 @@ export class AnalyticsService {
         uniqueWallets: m.uniqueWallets,
       }));
 
-      await this.cacheClient.set(cacheKey, trends, this.cacheTTL);
+      await this.cacheClient.set(cacheKey, trends, CACHE_TTL_SECONDS.DEFAULT);
       return trends;
     } catch (error) {
       logger.error('Error fetching platform trends:', error);
@@ -353,7 +357,7 @@ export class AnalyticsService {
   async getEventStats(options?: AnalyticsOptions): Promise<EventStats[]> {
     const cacheKey = `event_stats:${options?.startDate?.getTime() || 'all'}`;
     const cached = await this.cacheClient.get(cacheKey);
-    if (cached) return cached;
+    if (cached) return cached as EventStats[];
 
     try {
       const result = await this.prisma.analyticsEvent.groupBy({
@@ -392,7 +396,7 @@ export class AnalyticsService {
         });
       }
 
-      await this.cacheClient.set(cacheKey, eventStats, this.cacheTTL);
+      await this.cacheClient.set(cacheKey, eventStats, CACHE_TTL_SECONDS.DEFAULT);
       return eventStats;
     } catch (error) {
       logger.error('Error fetching event stats:', error);
@@ -678,7 +682,6 @@ export class AnalyticsService {
    */
   async getGroupsOverviewStats(): Promise<GroupsOverviewStats> {
     const CACHE_KEY = 'stats:groups:overview';
-    const CACHE_TTL = 300; // 5 minutes
 
     // Return cached value if available
     const cached = await this.cacheClient.get(CACHE_KEY);
@@ -731,7 +734,7 @@ export class AnalyticsService {
         cachedAt: new Date().toISOString(),
       };
 
-      await this.cacheClient.set(CACHE_KEY, stats, CACHE_TTL);
+      await this.cacheClient.set(CACHE_KEY, stats, 300); // 5 minutes
       return stats;
     } catch (error) {
       logger.error('Error fetching groups overview stats:', error);
