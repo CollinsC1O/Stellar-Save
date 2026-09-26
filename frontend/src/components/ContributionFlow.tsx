@@ -16,8 +16,10 @@ import { useState } from 'react';
 
 import { Button } from './Button';
 import { ContributionSuccessModal } from './ContributionSuccessModal';
+import { translateValidationMessage, validateContributionAmount } from '../schemas/contributionSchema';
 import { getExplorerTxUrl } from '../utils/explorerUrl';
 
+import type { ValidationMessage } from '../schemas/contributionSchema';
 import type { TransactionStatus } from '../types/contribution';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -44,15 +46,8 @@ export interface ContributionFlowProps {
 }
 
 // ── Validation ───────────────────────────────────────────────────────────────
-
-function validateAmount(raw: string, min: number, max: number): string | null {
-  const value = parseFloat(raw);
-  if (!raw.trim() || isNaN(value)) return 'Please enter a valid amount.';
-  if (value <= 0) return 'Amount must be greater than 0.';
-  if (value < min) return `Minimum contribution is ${min} XLM.`;
-  if (value > max) return `Maximum contribution is ${max} XLM.`;
-  return null;
-}
+// Rules live in `schemas/contributionSchema` so ContributionFlow and
+// ContributionScheduler validate amounts identically.
 
 // ── Mock wallet transaction ──────────────────────────────────────────────────
 
@@ -189,7 +184,7 @@ export function ContributionFlow({
   disabled = false,
 }: ContributionFlowProps) {
   const [amountInput, setAmountInput] = useState(defaultAmount ? String(defaultAmount) : '');
-  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<ValidationMessage | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [status, setStatus] = useState<TransactionStatus>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -201,7 +196,7 @@ export function ContributionFlow({
 
   const handleSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
-    const err = validateAmount(amountInput, minAmount, maxAmount);
+    const err = validateContributionAmount(amountInput, { min: minAmount, max: maxAmount });
     if (err) {
       setFieldError(err);
       return;
@@ -305,7 +300,9 @@ export function ContributionFlow({
               }}
               error={!!fieldError}
               helperText={
-                fieldError ?? `Min: ${minAmount} XLM · Max: ${maxAmount.toLocaleString()} XLM`
+                fieldError
+                  ? translateValidationMessage(fieldError)
+                  : `Min: ${minAmount} XLM · Max: ${maxAmount.toLocaleString()} XLM`
               }
               inputProps={{ min: minAmount, max: maxAmount, step: '0.01' }}
               disabled={isProcessing || !walletAddress || disabled}

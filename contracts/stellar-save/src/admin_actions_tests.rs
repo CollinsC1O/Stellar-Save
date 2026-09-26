@@ -7,7 +7,7 @@
 
 #[cfg(test)]
 mod tests {
-    use soroban_sdk::{testutils::Address as _, Address, Env};
+    use soroban_sdk::{testutils::Address as _, Address, BytesN, Env};
 
     use crate::{
         group::{Group, GroupStatus},
@@ -245,6 +245,43 @@ mod tests {
             recovery_fee_bps: 500,
         };
         let result = StellarSaveContract::set_penalty_config(env.clone(), 1, attacker, cfg);
+        assert_eq!(result.unwrap_err(), StellarSaveError::Unauthorized);
+    }
+
+    // ── upgrade_contract ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_upgrade_contract_unauthorized() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let admin = Address::generate(&env);
+        let attacker = Address::generate(&env);
+        store_config(&env, &admin);
+        let dummy_wasm = BytesN::from_array(&env, &[1u8; 32]);
+        let result = StellarSaveContract::upgrade_contract(env.clone(), attacker, dummy_wasm, 2);
+        assert_eq!(result.unwrap_err(), StellarSaveError::Unauthorized);
+    }
+
+    // ── pause_group ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_pause_group_authorized() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let creator = Address::generate(&env);
+        store_group_status(&env, 1, &creator, GroupStatus::Active);
+        let result = StellarSaveContract::pause_group(env.clone(), 1, creator.clone());
+        assert!(result.is_ok(), "{:?}", result.err());
+    }
+
+    #[test]
+    fn test_pause_group_unauthorized() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let creator = Address::generate(&env);
+        let attacker = Address::generate(&env);
+        store_group_status(&env, 1, &creator, GroupStatus::Active);
+        let result = StellarSaveContract::pause_group(env.clone(), 1, attacker);
         assert_eq!(result.unwrap_err(), StellarSaveError::Unauthorized);
     }
 }

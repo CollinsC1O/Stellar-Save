@@ -17,3 +17,4 @@ mod test_utils;
 mod benchmark_tests;
 #[cfg(test)]
 mod fuzz_tests;
+mod burn_edge_case_tests;

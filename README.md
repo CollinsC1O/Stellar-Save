@@ -251,8 +251,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Handsoff notes
 
-<!-- handsoff-issue-1649 -->
-- #1649: [Frontend] Audit and modularize frontend/src/components directory
+<!-- handsoff-issue-1684 -->
+- #1684: [Backend] Remove deprecated/legacy authentication code paths
 
-<!-- handsoff-issue-1650 -->
-- #1650: [Frontend] Consolidate duplicate data-fetching logic into custom hooks
+<!-- handsoff-issue-1685 -->
+- #1685: [Backend] Extract rate limiting logic into a single reusable middleware

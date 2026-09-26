@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ChangeEvent } from 'react';
 
 import { Card } from './Card';
 import { Dropdown } from './Dropdown';
@@ -174,6 +174,21 @@ export function GroupList({
     setCurrentPage(1);
   };
 
+  const handleCurrencyChange = (e: ChangeEvent<HTMLInputElement>) => {
+    onCurrencyChange?.(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleMinAmountChange = (e: ChangeEvent<HTMLInputElement>) => {
+    onMinAmountChange?.(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleMaxAmountChange = (e: ChangeEvent<HTMLInputElement>) => {
+    onMaxAmountChange?.(e.target.value);
+    setCurrentPage(1);
+  };
+
   const getSortLabel = () => {
     const fieldLabels: Record<SortField, string> = {
       name: 'Name',
@@ -276,10 +291,7 @@ export function GroupList({
                 className="group-list-filter-input"
                 placeholder="e.g. XLM"
                 value={currencyFilter}
-                onChange={(e) => {
-                  onCurrencyChange(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={handleCurrencyChange}
                 aria-label="Filter by token type"
               />
             </label>
@@ -292,10 +304,7 @@ export function GroupList({
                 className="group-list-filter-input"
                 placeholder="Min"
                 value={minAmount}
-                onChange={(e) => {
-                  onMinAmountChange?.(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={handleMinAmountChange}
                 aria-label="Minimum contribution amount"
               />
               <span aria-hidden>–</span>
@@ -304,10 +313,7 @@ export function GroupList({
                 className="group-list-filter-input"
                 placeholder="Max"
                 value={maxAmount}
-                onChange={(e) => {
-                  onMaxAmountChange?.(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={handleMaxAmountChange}
                 aria-label="Maximum contribution amount"
               />
             </fieldset>

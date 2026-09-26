@@ -1,8 +1,6 @@
-import { Box, Typography, Alert, AlertTitle, Collapse } from '@mui/material';
 import React from 'react';
 
-import { AppButton } from '../../ui/components/AppButton';
-import { AppCard } from '../../ui/components/AppCard';
+import { ErrorBoundaryFallback } from './ErrorBoundaryFallback';
 import './ErrorBoundary.css';
 
 export interface ErrorBoundaryProps {
@@ -91,30 +89,6 @@ export class ErrorBoundary extends React.Component<
     }
   };
 
-  private getErrorMessage = (error: Error): string => {
-    const message = error.message.toLowerCase();
-
-    // Detect common error patterns
-    if (message.includes('network') || message.includes('fetch')) {
-      return 'A network error occurred. Please check your internet connection and try again.';
-    }
-    if (message.includes('unauthorized') || message.includes('403')) {
-      return 'You are not authorized to access this resource. Please log in again.';
-    }
-    if (message.includes('not found') || message.includes('404')) {
-      return 'The requested resource could not be found.';
-    }
-    if (message.includes('timeout')) {
-      return 'The request timed out. Please try again.';
-    }
-    if (message.includes('quota') || message.includes('limit')) {
-      return 'You have exceeded the rate limit. Please wait a moment and try again.';
-    }
-
-    // Default message
-    return 'An unexpected error occurred while loading this page.';
-  };
-
   handleRetry = () => {
     const { retryCount } = this.state;
     if (retryCount < this.maxRetries) {
@@ -142,77 +116,22 @@ export class ErrorBoundary extends React.Component<
 
   renderFallback() {
     const { fallback, className } = this.props;
-    const { error, retryCount } = this.state;
-    const isDevelopment = process.env.NODE_ENV === 'development';
+    const { error, errorInfo, retryCount } = this.state;
 
+    // An explicit `fallback` wins: the caller opted out of the default UI
+    // (and therefore out of the default notification).
     if (fallback) return <>{fallback}</>;
 
-    const errorMessage = error ? this.getErrorMessage(error) : 'An unexpected error occurred.';
-    const canRetry = retryCount < this.maxRetries;
-
     return (
-      <Box
-        className={['error-boundary', className].filter(Boolean).join(' ')}
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '50vh',
-          p: 3,
-        }}
-      >
-        <AppCard
-          sx={{
-            maxWidth: 600,
-            width: '100%',
-            textAlign: 'center',
-          }}
-        >
-          <Alert severity="error" sx={{ mb: 3 }}>
-            <AlertTitle>Something went wrong</AlertTitle>
-            <Typography variant="body2">{errorMessage}</Typography>
-          </Alert>
-
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', mb: 2 }}>
-            <AppButton
-              variant="contained"
-              color="primary"
-              onClick={this.handleRetry}
-              disabled={!canRetry}
-            >
-              {canRetry ? 'Try Again' : 'Max Retries Reached'}
-            </AppButton>
-            <AppButton variant="outlined" onClick={this.handleGoHome}>
-              Go Home
-            </AppButton>
-          </Box>
-
-          {retryCount > 0 && (
-            <Typography variant="caption" color="text.secondary" sx={{ mb: 2 }}>
-              Retry attempts: {retryCount}/{this.maxRetries}
-            </Typography>
-          )}
-
-          {/* Development mode details */}
-          {isDevelopment && error && (
-            <Collapse in={true}>
-              <Alert severity="info" sx={{ mt: 2, textAlign: 'left' }}>
-                <AlertTitle>Development Details</AlertTitle>
-                <Typography
-                  variant="body2"
-                  component="pre"
-                  sx={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem' }}
-                >
-                  {error.message}
-                  {error.stack && `\n\nStack Trace:\n${error.stack}`}
-                  {this.state.errorInfo?.componentStack &&
-                    `\n\nComponent Stack:\n${this.state.errorInfo.componentStack}`}
-                </Typography>
-              </Alert>
-            </Collapse>
-          )}
-        </AppCard>
-      </Box>
+      <ErrorBoundaryFallback
+        error={error}
+        errorInfo={errorInfo}
+        retryCount={retryCount}
+        maxRetries={this.maxRetries}
+        onRetry={this.handleRetry}
+        onGoHome={this.handleGoHome}
+        className={className}
+      />
     );
   }
 
