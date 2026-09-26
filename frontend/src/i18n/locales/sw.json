@@ -19,6 +19,14 @@
       "system": "Mfumo"
     }
   },
+  "contribution": {
+    "validation": {
+      "invalidAmount": "Tafadhali ingiza kiasi halali.",
+      "positiveAmount": "Kiasi lazima kiwe kikubwa kuliko 0.",
+      "minAmount": "Kiasi cha chini cha mchango ni XLM {{min}}.",
+      "maxAmount": "Kiasi cha juu cha mchango ni XLM {{max}}."
+    }
+  },
   "scheduler": {
     "title": "Panga Mchango",
     "amount": "Kiasi (XLM)",

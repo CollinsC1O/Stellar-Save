@@ -19,6 +19,14 @@
       "system": "النظام"
     }
   },
+  "contribution": {
+    "validation": {
+      "invalidAmount": "يرجى إدخال مبلغ صالح.",
+      "positiveAmount": "يجب أن يكون المبلغ أكبر من 0.",
+      "minAmount": "الحد الأدنى للمساهمة هو {{min}} XLM.",
+      "maxAmount": "الحد الأقصى للمساهمة هو {{max}} XLM."
+    }
+  },
   "scheduler": {
     "title": "جدولة مساهمة",
     "amount": "المبلغ (XLM)",

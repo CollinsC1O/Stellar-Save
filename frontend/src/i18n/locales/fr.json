@@ -19,6 +19,14 @@
       "system": "Système"
     }
   },
+  "contribution": {
+    "validation": {
+      "invalidAmount": "Veuillez saisir un montant valide.",
+      "positiveAmount": "Le montant doit être supérieur à 0.",
+      "minAmount": "La contribution minimale est de {{min}} XLM.",
+      "maxAmount": "La contribution maximale est de {{max}} XLM."
+    }
+  },
   "scheduler": {
     "title": "Planifier une contribution",
     "amount": "Montant (XLM)",
