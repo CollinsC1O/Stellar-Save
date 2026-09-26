@@ -330,6 +330,12 @@ export class BackupService {
     return this.listJobs().find((j) => j.status === 'completed' && (!type || j.type === type));
   }
 
+  /**
+   * Remove old backups based on retention policy.
+   * Called by BackupOrchestrator on its prune timer.
+   * Can also be called manually for immediate cleanup.
+   * @returns Number of backups pruned
+   */
   async pruneOldBackups(): Promise<number> {
     const cutoff = Date.now() - this.retentionDays * 86_400_000;
     const keys = await this.s3.listObjects({ Bucket: this.bucket, Prefix: 'backups/' });
