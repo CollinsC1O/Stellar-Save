@@ -1,7 +1,6 @@
-import js from '@eslint/js';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
-import jsxA11y from 'eslint-plugin-jsx-a11y';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -11,12 +10,7 @@ export default tseslint.config(
   ...base,
   {
     files: ['**/*.{ts,tsx}'],
-    extends: [
-      js.configs.recommended,
-      ...tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
-    ],
+    extends: [reactHooks.configs.flat.recommended, reactRefresh.configs.vite],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
@@ -24,7 +18,6 @@ export default tseslint.config(
     rules: {
       // Use utils/logger for debug/info output; raw console.log is banned.
       'no-console': ['error', { allow: ['warn', 'error'] }],
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': ['error', { fixToUnknown: true }],
     },
   },
@@ -60,8 +53,5 @@ export default tseslint.config(
     rules: {
       'no-console': 'off',
     },
-  },
-  {
-    ignores: ['dist', 'coverage'],
   }
 );
