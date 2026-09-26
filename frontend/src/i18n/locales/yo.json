@@ -19,6 +19,14 @@
       "system": "Ètò"
     }
   },
+  "contribution": {
+    "validation": {
+      "invalidAmount": "Jọwọ fi iye rere kí o.",
+      "positiveAmount": "Iye gbọ́dọ́ tó ju 0 lọ.",
+      "minAmount": "Ìdáwọ́lé àdáwọ́lé jẹ́ {{min}} XLM.",
+      "maxAmount": "Ìdáwọ́lé ìgbèsè jẹ́ {{max}} XLM."
+    }
+  },
   "scheduler": {
     "title": "Ṣeto ilowosi",
     "amount": "Iye (XLM)",

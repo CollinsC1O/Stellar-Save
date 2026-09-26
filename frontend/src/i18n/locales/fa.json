@@ -19,6 +19,14 @@
       "system": "سیستم"
     }
   },
+  "contribution": {
+    "validation": {
+      "invalidAmount": "لطفاً مبلغ معتبر وارد کنید.",
+      "positiveAmount": "مبلغ باید بیشتر از ۰ باشد.",
+      "minAmount": "حداقل مشارکت {{min}} XLM است.",
+      "maxAmount": "حداکثر مشارکت {{max}} XLM است."
+    }
+  },
   "scheduler": {
     "title": "زمان‌بندی مشارکت",
     "amount": "مبلغ (XLM)",
