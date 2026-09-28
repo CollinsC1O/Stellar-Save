@@ -40,22 +40,33 @@ export interface RotationConfig {
   lambdaArn?: string; // For custom rotation
 }
 
+export interface SecretsManagerServiceDeps {
+  client?: SecretsManagerClient;
+  config?: { aws: { region: string; accessKeyId?: string; secretAccessKey?: string } };
+  logger?: { info: (...a: unknown[]) => void; error: (...a: unknown[]) => void; warn: (...a: unknown[]) => void; debug: (...a: unknown[]) => void };
+}
+
 export class SecretsManagerService {
   private client: SecretsManagerClient;
   private cache: Map<string, { value: string; expiry: number }> = new Map();
   private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly log: NonNullable<SecretsManagerServiceDeps['logger']>;
 
-  constructor() {
-    this.client = new SecretsManagerClient({
-      region: config.aws.region,
-      credentials:
-        config.aws.accessKeyId && config.aws.secretAccessKey
-          ? {
-              accessKeyId: config.aws.accessKeyId,
-              secretAccessKey: config.aws.secretAccessKey,
-            }
-          : undefined,
-    });
+  constructor(deps?: SecretsManagerServiceDeps) {
+    const resolvedConfig = deps?.config ?? config;
+    this.log = deps?.logger ?? logger;
+    this.client =
+      deps?.client ??
+      new SecretsManagerClient({
+        region: resolvedConfig.aws.region,
+        credentials:
+          resolvedConfig.aws.accessKeyId && resolvedConfig.aws.secretAccessKey
+            ? {
+                accessKeyId: resolvedConfig.aws.accessKeyId,
+                secretAccessKey: resolvedConfig.aws.secretAccessKey,
+              }
+            : undefined,
+      });
   }
 
   /**

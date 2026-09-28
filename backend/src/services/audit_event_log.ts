@@ -1,4 +1,5 @@
 import { db } from '../db';
+import { logger } from '../logger';
 
 /**
  * Unified audit pipeline.
@@ -105,8 +106,7 @@ export async function writeAuditEvent(event: AuditEventInput): Promise<AuditEven
  */
 export function writeAuditEventAsync(event: AuditEventInput): void {
   void writeAuditEvent(event).catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error('Failed to write audit event', { action: event.action, err });
+    logger.error('Failed to write audit event', { action: event.action, err });
   });
 }
 

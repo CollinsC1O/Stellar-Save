@@ -350,7 +350,7 @@ async function sendRotationFailureAlert(
   // Implement alerting logic here
   // For example: SNS, CloudWatch, PagerDuty, etc.
 
-  console.error('ROTATION FAILURE ALERT', {
+  logger.error('ROTATION FAILURE ALERT', {
     secretId,
     step,
     error: error instanceof Error ? error.message : 'Unknown error',
